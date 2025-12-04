@@ -38,7 +38,6 @@ export default function Login() {
     if (!res.success) {
       alert("Invalid credentials. Try demo accounts listed below.");
     } else {
-      // successful login -> navigate to protected home
       navigate("/", { replace: true });
     }
   };
@@ -60,35 +59,34 @@ export default function Login() {
     if (!res.success) {
       alert(res.message || "Signup failed");
     } else {
-      // navigate into the app after successful signup
       navigate("/", { replace: true });
     }
   };
 
   if (isSignup) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 px-4 py-8">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-maroon-500 to-maroon-700 px-4">
         <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-8">
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">Create Account</h2>
-          <p className="text-gray-600 mb-6">CounselLink - MSU-Marawi City</p>
+          <h1 className="text-3xl font-bold text-maroon-700 mb-2">CounselLink</h1>
+          <p className="text-gray-600 mb-6">MSU-Marawi City Division of Student Affairs</p>
 
           <form onSubmit={handleSignupSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
               <input name="name" value={signupForm.name} onChange={handleSignupChange} required
-                     className="w-full px-4 py-2 border rounded-lg" />
+                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-maroon-500" />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input name="email" type="email" value={signupForm.email} onChange={handleSignupChange} required
-                     className="w-full px-4 py-2 border rounded-lg" />
+                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-maroon-500" />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
               <select name="role" value={signupForm.role} onChange={handleSignupChange}
-                      className="w-full px-4 py-2 border rounded-lg">
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-maroon-500">
                 <option value="student">Student</option>
                 <option value="counselor">Counselor</option>
                 <option value="college_rep">College Representative</option>
@@ -100,7 +98,7 @@ export default function Login() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Student ID</label>
                 <input name="studentId" value={signupForm.studentId} onChange={handleSignupChange}
-                       className="w-full px-4 py-2 border rounded-lg" />
+                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-maroon-500" />
               </div>
             )}
 
@@ -108,7 +106,7 @@ export default function Login() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">College</label>
                 <select name="college" value={signupForm.college} onChange={handleSignupChange}
-                        className="w-full px-4 py-2 border rounded-lg">
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-maroon-500">
                   {COLLEGES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
@@ -117,29 +115,28 @@ export default function Login() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
               <input name="password" type="password" value={signupForm.password} onChange={handleSignupChange} required
-                     className="w-full px-4 py-2 border rounded-lg" />
+                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-maroon-500" />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
               <input name="confirmPassword" type="password" value={signupForm.confirmPassword} onChange={handleSignupChange} required
-                     className="w-full px-4 py-2 border rounded-lg" />
+                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-maroon-500" />
             </div>
 
-            <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg">Create Account</button>
+            <button type="submit" className="w-full bg-maroon-500 text-white py-3 rounded-lg hover:bg-maroon-600 font-medium transition">Create Account</button>
 
-            <button type="button" onClick={() => setIsSignup(false)} className="w-full mt-3 text-blue-600">Back to Login</button>
+            <button type="button" onClick={() => setIsSignup(false)} className="w-full mt-3 text-maroon-600 hover:text-maroon-700 font-medium">Back to Login</button>
           </form>
         </div>
       </div>
     );
   }
 
-  // Login view
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 px-4">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-maroon-500 to-maroon-700 px-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">CounselLink</h1>
+        <h1 className="text-3xl font-bold text-maroon-700 mb-2">CounselLink</h1>
         <p className="text-gray-600 mb-6">MSU-Marawi City Division of Student Affairs</p>
 
         <div className="mb-6">
@@ -152,7 +149,7 @@ export default function Login() {
               { value: "admin", label: "Admin" }
             ].map(role => (
               <button key={role.value} type="button" onClick={() => setSelectedRole(role.value)}
-                      className={`py-2 px-3 rounded-lg font-medium ${selectedRole === role.value ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}>
+                      className={`py-2 px-3 rounded-lg font-medium transition ${selectedRole === role.value ? 'bg-maroon-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
                 {role.label}
               </button>
             ))}
@@ -163,20 +160,20 @@ export default function Login() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input name="email" value={loginForm.email} onChange={handleLoginChange} type="email" required
-                   className="w-full px-4 py-2 border rounded-lg" placeholder={`${selectedRole}@msu.edu.ph`} />
+                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-maroon-500" placeholder={`${selectedRole}@msu.edu.ph`} />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input name="password" value={loginForm.password} onChange={handleLoginChange} type="password" required
-                   className="w-full px-4 py-2 border rounded-lg" />
+                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-maroon-500" />
           </div>
 
-          <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg">Login</button>
+          <button type="submit" className="w-full bg-maroon-500 text-white py-3 rounded-lg hover:bg-maroon-600 font-medium transition">Login</button>
         </form>
 
         {selectedRole === "student" && (
-          <button type="button" onClick={() => setIsSignup(true)} className="w-full mt-4 text-blue-600">Don't have an account? Sign up</button>
+          <button type="button" onClick={() => setIsSignup(true)} className="w-full mt-4 text-maroon-600 hover:text-maroon-700 font-medium">Don't have an account? Sign up</button>
         )}
       </div>
     </div>

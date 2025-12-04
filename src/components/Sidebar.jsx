@@ -12,7 +12,6 @@ function Sidebar({ currentUser: propUser, activeView, setActiveView, handleLogou
   const currentUser = propUser || ctxUser;
   const navigate = useNavigate();
 
-  // Map item id to route path used in this app
   const idToPath = {
     dashboard: "/",
     "request-appointment": "/appointments",
@@ -70,10 +69,9 @@ function Sidebar({ currentUser: propUser, activeView, setActiveView, handleLogou
   };
 
   if (!currentUser) {
-    // Render an empty sidebar so layout doesn't crash while user isn't set
     return (
-      <div className="w-64 bg-gray-900 text-white flex flex-col">
-        <div className="p-6 border-b border-gray-700">
+      <div className="w-64 bg-maroon-500 text-white flex flex-col shadow-lg">
+        <div className="p-6 border-b border-maroon-700">
           <h1 className="text-2xl font-bold">CounselLink</h1>
         </div>
       </div>
@@ -83,13 +81,13 @@ function Sidebar({ currentUser: propUser, activeView, setActiveView, handleLogou
   const navItems = getNavItems();
 
   return (
-    <div className="w-64 bg-gray-900 text-white flex flex-col">
-      <div className="p-6 border-b border-gray-700">
+    <div className="w-64 bg-maroon-500 text-white flex flex-col shadow-lg">
+      <div className="p-6 border-b border-maroon-700">
         <h1 className="text-2xl font-bold">CounselLink</h1>
-        <div className="mt-2 text-sm text-gray-300">
+        <div className="mt-2 text-sm text-maroon-100">
           <div className="font-medium text-white">{currentUser.name}</div>
           <div className="capitalize">{currentUser.role?.replace('_', ' ')}</div>
-          {currentUser.college && <div className="text-blue-400">{currentUser.college}</div>}
+          {currentUser.college && <div className="text-maroon-50">{currentUser.college}</div>}
         </div>
       </div>
 
@@ -100,13 +98,14 @@ function Sidebar({ currentUser: propUser, activeView, setActiveView, handleLogou
             <button
               key={item.id}
               onClick={() => {
-                // keep previous behavior if parent passed setActiveView
                 if (setActiveView) setActiveView(item.id);
                 const path = idToPath[item.id] || "/";
                 navigate(path);
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-                activeView === item.id ? "bg-blue-600 text-white" : "text-gray-300 hover:bg-gray-800"
+                activeView === item.id
+                  ? "bg-maroon-700 text-white"
+                  : "text-maroon-50 hover:bg-maroon-600"
               }`}
             >
               <Icon size={20} />
@@ -116,10 +115,10 @@ function Sidebar({ currentUser: propUser, activeView, setActiveView, handleLogou
         })}
       </nav>
 
-      <div className="p-4 border-t border-gray-700">
+      <div className="p-4 border-t border-maroon-700">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 w-full text-red-400 hover:text-red-300"
+          className="flex items-center gap-2 w-full text-maroon-50 hover:text-white hover:bg-maroon-600 px-3 py-2 rounded transition"
         >
           <LogOut size={20} />
           <span>Logout</span>

@@ -27,18 +27,18 @@ export default function Students() {
   }, [students, selectedCollege, query]);
 
   return (
-    <div className="p-6 text-white">
+    <div className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-semibold">Manage Student Records</h2>
-        <div className="text-sm text-gray-300">Signed in as: {currentUser?.name} ({currentUser?.role})</div>
+        <h2 className="text-2xl font-semibold text-gray-900">Manage Student Records</h2>
+        <div className="text-sm text-gray-600">Signed in as: {currentUser?.name} ({currentUser?.role})</div>
       </div>
 
-      <div className="bg-gray-800 p-4 rounded-xl mb-6">
+      <div className="bg-white border border-gray-200 p-4 rounded-xl mb-6 shadow">
         <div className="flex flex-col md:flex-row md:items-center md:gap-4">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-300">College</label>
+            <label className="text-sm text-gray-700 font-medium">College</label>
             <select
-              className="px-3 py-2 rounded bg-gray-700 text-white"
+              className="px-3 py-2 rounded border border-gray-300 bg-white text-gray-900"
               value={selectedCollege}
               onChange={(e) => setSelectedCollege(e.target.value)}
             >
@@ -52,50 +52,50 @@ export default function Students() {
           <div className="mt-3 md:mt-0 flex-1">
             <input
               placeholder="Search student name, email or ID..."
-              className="w-full px-3 py-2 rounded bg-gray-700 text-white"
+              className="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
 
           <div className="mt-3 md:mt-0">
-            <button className="px-4 py-2 bg-blue-600 rounded">Add New Record</button>
+            <button className="px-4 py-2 bg-maroon-500 text-white rounded hover:bg-maroon-600 transition">Add New Record</button>
           </div>
         </div>
       </div>
 
-      <div className="bg-gray-800 p-4 rounded-xl">
+      <div className="bg-white border border-gray-200 p-4 rounded-xl shadow overflow-x-auto">
         <table className="w-full text-left">
           <thead>
-            <tr className="text-sm text-gray-300 border-b border-gray-700">
-              <th className="py-3 px-2">Name</th>
-              <th className="py-3 px-2">College</th>
-              <th className="py-3 px-2">Student ID</th>
-              <th className="py-3 px-2">Email</th>
-              <th className="py-3 px-2">Actions</th>
+            <tr className="text-sm text-gray-700 border-b border-gray-200">
+              <th className="py-3 px-2 font-medium">Name</th>
+              <th className="py-3 px-2 font-medium">College</th>
+              <th className="py-3 px-2 font-medium">Student ID</th>
+              <th className="py-3 px-2 font-medium">Email</th>
+              <th className="py-3 px-2 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-gray-400">No records match your filters.</td>
+                <td colSpan={5} className="py-6 text-center text-gray-500">No records match your filters.</td>
               </tr>
             )}
             {filtered.map((s) => (
-              <tr key={s.id} className="border-b border-gray-700 hover:bg-gray-700">
-                <td className="py-3 px-2">{s.name}</td>
-                <td className="py-3 px-2">{s.college || "N/A"}</td>
-                <td className="py-3 px-2">{s.studentId || "—"}</td>
-                <td className="py-3 px-2 text-sm text-gray-300">{s.email}</td>
+              <tr key={s.id} className="border-b border-gray-200 hover:bg-gray-50">
+                <td className="py-3 px-2 text-gray-900">{s.name}</td>
+                <td className="py-3 px-2 text-gray-900">{s.college || "N/A"}</td>
+                <td className="py-3 px-2 text-gray-900">{s.studentId || "—"}</td>
+                <td className="py-3 px-2 text-sm text-gray-600">{s.email}</td>
                 <td className="py-3 px-2">
                   {(currentUser?.role === "counselor" || currentUser?.role === "admin") ? (
                     <div className="flex gap-2">
-                      <button className="text-blue-400 hover:text-blue-200">View</button>
-                      <button className="text-green-400 hover:text-green-200">Edit</button>
-                      <button className="text-red-400 hover:text-red-200">Delete</button>
+                      <button className="text-maroon-600 hover:text-maroon-700 font-medium">View</button>
+                      <button className="text-green-600 hover:text-green-700 font-medium">Edit</button>
+                      <button className="text-red-600 hover:text-red-700 font-medium">Delete</button>
                     </div>
                   ) : (
-                    <span className="text-sm text-gray-400">No actions</span>
+                    <span className="text-sm text-gray-500">No actions</span>
                   )}
                 </td>
               </tr>
