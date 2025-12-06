@@ -12,7 +12,7 @@ export default function Login() {
   const [selectedRole, setSelectedRole] = useState("student");
 
   const [loginForm, setLoginForm] = useState({
-    email: "",
+    identifier: "", // email for staff, studentId for students
     password: ""
   });
 
@@ -34,7 +34,7 @@ export default function Login() {
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    const res = login({ email: loginForm.email, password: loginForm.password, role: selectedRole });
+    const res = login({ identifier: loginForm.identifier, password: loginForm.password, role: selectedRole });
     if (!res.success) {
       alert("Invalid credentials. Try demo accounts listed below.");
     } else {
@@ -158,9 +158,16 @@ export default function Login() {
 
         <form onSubmit={handleLoginSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input name="email" value={loginForm.email} onChange={handleLoginChange} type="email" required
-                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-maroon-500" placeholder={`${selectedRole}@msu.edu.ph`} />
+            <label className="block text-sm font-medium text-gray-700 mb-1">{selectedRole === 'student' ? 'ID Number' : 'Email'}</label>
+            <input
+              name="identifier"
+              value={loginForm.identifier}
+              onChange={handleLoginChange}
+              type={selectedRole === 'student' ? 'text' : 'email'}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-maroon-500"
+              placeholder={selectedRole === 'student' ? 'e.g., 202329207' : `${selectedRole}@msu.edu.ph`}
+            />
           </div>
 
           <div>

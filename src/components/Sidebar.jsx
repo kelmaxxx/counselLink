@@ -12,20 +12,28 @@ function Sidebar({ currentUser: propUser, activeView, setActiveView, handleLogou
   const currentUser = propUser || ctxUser;
   const navigate = useNavigate();
 
-  const idToPath = {
-    dashboard: "/",
-    "request-appointment": "/appointments",
-    profile: "/",
-    notifications: "/",
-    "manage-students": "/students",
-    appointments: "/appointments",
-    "generate-reports": "/reports",
-    "counseling-data": "/reports",
-    "request-data": "/",
-    "manage-users": "/settings",
-    announcements: "/",
-    reports: "/reports",
-  };
+const idToPath = {
+  // Student
+  dashboard: "/",
+  "request-appointment": "/student/request-appointment",
+  "request-psych-test": "/student/request-psych-test",
+  profile: "/student/profile",
+  notifications: "/student/notifications",
+  
+  // Counselor
+  "manage-students": "/students",
+  appointments: "/counselor/appointments",
+  "generate-reports": "/counselor/reports",
+  
+  // College Rep
+  "counseling-data": "/rep/counseling-data",
+  "request-data": "/rep/request-data",
+  
+  // Admin
+  "manage-users": "/admin/manage-users",
+  announcements: "/admin/announcements",
+  reports: "/admin/reports",
+};
 
   const getNavItems = () => {
     if (!currentUser) return [];
@@ -34,6 +42,7 @@ function Sidebar({ currentUser: propUser, activeView, setActiveView, handleLogou
         return [
           { id: "dashboard", label: "Dashboard", icon: BarChart3 },
           { id: "request-appointment", label: "Request Appointment", icon: Calendar },
+          { id: "request-psych-test", label: "Request Psych Test", icon: ClipboardList },
           { id: "profile", label: "My Profile", icon: User },
           { id: "notifications", label: "Notifications", icon: Bell }
         ];
