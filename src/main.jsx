@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext'
 import { AppointmentsProvider } from './context/AppointmentsContext'
 import { TestsProvider } from './context/TestsContext'
 import { NotificationsProvider } from './context/NotificationsContext'
+import { TestResultsProvider } from './context/TestResultsContext'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -13,7 +14,9 @@ createRoot(document.getElementById('root')).render(
       <AppointmentsProvider>
         <TestsProvider>
           <NotificationsProvider>
-            <App />
+            <TestResultsProvider>
+              <App />
+            </TestResultsProvider>
           </NotificationsProvider>
         </TestsProvider>
       </AppointmentsProvider>

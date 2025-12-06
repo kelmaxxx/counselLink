@@ -3,6 +3,7 @@ import React from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useAppointments } from "../../context/AppointmentsContext";
 import { useTests } from "../../context/TestsContext";
+import { useTestResults } from "../../context/TestResultsContext";
 import { CalendarDays, CheckCircle2, Clock3, FileText, ArrowRight, Calendar, User2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -16,6 +17,9 @@ export default function StudentDashboard() {
   const { getTestsForCurrentUser } = useTests?.() || {};
   const myTests = getTestsForCurrentUser ? getTestsForCurrentUser() : [];
 
+  const { getTestResultsForCurrentUser } = useTestResults?.() || {};
+  const myTestResults = getTestResultsForCurrentUser ? getTestResultsForCurrentUser() : [];
+
   // Compute upcoming, pending, etc.
   const upcoming = myAppointments.filter(a => a.status === 'accepted' || a.status === 'rescheduled');
   const pending = myAppointments.filter(a => a.status === 'pending');
@@ -26,7 +30,7 @@ export default function StudentDashboard() {
   const upcomingCount = upcoming.length + upcomingTests.length;
   const completedCount = 5; // placeholder until we track completed
   const pendingCount = pending.length + pendingTests.length;
-  const testResultsCount = 2; // placeholder
+  const testResultsCount = myTestResults.length;
 
   // Determine next item (appointment or test, earliest accepted/rescheduled by scheduledDate)
   const sortByDateTime = (a, b) => {
@@ -178,15 +182,27 @@ export default function StudentDashboard() {
             </div>
 
             <div className="mt-4 space-y-3">
-              {[{ name: 'Career Interest Inventory', date: 'Completed Nov 20, 2024' }, { name: 'Personality Assessment', date: 'Completed Oct 18, 2024' }].map((r, idx) => (
-                <div key={idx} className="flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3 bg-gray-50">
-                  <div>
-                    <p className="font-medium text-gray-900">{r.name}</p>
-                    <p className="text-xs text-gray-600">{r.date}</p>
+              {myTestResults.length === 0 ? (
+                <p className="text-center text-gray-500 py-4">No test results available yet.</p>
+              ) : (
+                myTestResults.slice(0, 5).map((r) => (
+                  <div key={r.id} className="flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3 bg-gray-50 hover:bg-gray-100 transition">
+                    <div>
+                      <p className="font-medium text-gray-900">{r.testName}</p>
+                      <p className="text-xs text-gray-600">Completed {r.completedDate}</p>
+                      <p className="text-xs text-gray-500">By {r.counselorName}</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        alert(`Test: ${r.testName}\n\nSummary:\n${r.summary}\n\nRecommendations:\n${r.recommendations || 'None'}`);
+                      }}
+                      className="text-maroon-600 font-medium hover:underline"
+                    >
+                      View
+                    </button>
                   </div>
-                  <button className="text-teal-700 font-medium hover:underline">View</button>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>

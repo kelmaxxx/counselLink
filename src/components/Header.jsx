@@ -19,13 +19,7 @@ export default function Header({ currentUser }) {
 
         <div className="flex items-center gap-4">
           {/* Search */}
-          <div className="hidden md:flex items-center gap-2 border border-maroon-400 rounded-lg px-3 py-2 bg-maroon-600/40">
-            <Search className="w-4 h-4 text-maroon-100" />
-            <input
-              placeholder="Search..."
-              className="bg-transparent outline-none text-sm text-maroon-50 placeholder-maroon-100/70"
-            />
-          </div>
+          
 
           {/* Notifications with badge - Link to notifications page */}
           <Link to={`/${currentUser?.role === 'student' ? 'student' : currentUser?.role === 'counselor' ? 'counselor' : currentUser?.role === 'college_rep' ? 'rep' : 'admin'}/notifications`} className="relative p-2 hover:bg-maroon-600 rounded-lg transition">

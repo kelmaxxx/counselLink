@@ -1,4 +1,4 @@
-export const COLLEGES = ['CICS', 'COE', 'CBAA', 'CHS', 'CED', 'CO L', 'COA', 'CNSM', 'CSSH', 'CPA', 'KFCIASS','CFES', 'CFAS', 'CHTM'];
+export const COLLEGES = ['CICS', 'COE', 'CBAA', 'CHS', 'CED', 'COL', 'COA', 'CNSM', 'CSSH', 'CPA', 'KFCIASS','CFES', 'CFAS', 'CHTM'];
 
 export const MOCK_USERS = [
   // Admin
