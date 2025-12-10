@@ -1,11 +1,13 @@
 // src/pages/dashboard/StudentDashboard.jsx
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useAppointments } from "../../context/AppointmentsContext";
 import { useTests } from "../../context/TestsContext";
 import { useTestResults } from "../../context/TestResultsContext";
-import { CalendarDays, CheckCircle2, Clock3, FileText, ArrowRight, Calendar, User2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock3, FileText, ArrowRight, Calendar, User2, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
+import ProfileViewModal from "../../components/ProfileViewModal";
+import ChatModal from "../../components/ChatModal";
 
 export default function StudentDashboard() {
   const { currentUser, users } = useAuth();
@@ -19,6 +21,9 @@ export default function StudentDashboard() {
 
   const { getTestResultsForCurrentUser } = useTestResults?.() || {};
   const myTestResults = getTestResultsForCurrentUser ? getTestResultsForCurrentUser() : [];
+
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [chatRecipient, setChatRecipient] = useState(null);
 
   // Compute upcoming, pending, etc.
   const upcoming = myAppointments.filter(a => a.status === 'accepted' || a.status === 'rescheduled');
@@ -54,11 +59,15 @@ export default function StudentDashboard() {
   const nextAppt = next ? {
     title: next.type === 'test' ? `${next.testType} Request` : 'General Counseling Session',
     counselor: next.type === 'test' ? 'Counseling Office' : (counselorName || 'Assigned Counselor'),
+    counselorId: next.counselorId,
     date: next.scheduledDate || next.preferredDate || 'TBD',
     time: next.scheduledTimeSlot || next.timeSlot || (Array.isArray(next.preferredSlots) ? next.preferredSlots[0] : 'TBD'),
     status: next.status === 'accepted' ? 'Confirmed' : (next.status === 'rescheduled' ? 'Rescheduled' : 'Pending'),
     type: next.type
   } : null;
+
+  // Get all counselors for the "Available Counselors" section
+  const counselors = users?.filter((u) => u.role === "counselor") || [];
 
   return (
     <div className="">
@@ -134,79 +143,238 @@ export default function StudentDashboard() {
         </div>
 
         {/* Main two-column content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Upcoming Appointment/Test */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow p-6 border border-gray-200">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left: Upcoming Appointment */}
+          <div className="bg-white rounded-xl shadow p-6 border border-gray-200">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Upcoming {nextAppt?.type === 'test' ? 'Test' : 'Appointment'}</h3>
-                <p className="text-sm text-gray-600">Your next scheduled {nextAppt?.type === 'test' ? 'psychological test' : 'session'}</p>
+                <h3 className="text-lg font-semibold text-gray-900">Upcoming Appointment</h3>
+                <p className="text-sm text-gray-600">Your next scheduled session</p>
               </div>
             </div>
 
             {nextAppt ? (
-              <div className="mt-4 p-4 rounded-lg border border-gray-200 bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-maroon-100 text-maroon-700 rounded-full"><Calendar size={18} /></div>
-                  <div>
-                    <p className="font-medium text-gray-900">{nextAppt.title || 'General Counseling Session'}</p>
-                    <p className="text-sm text-gray-600">with {nextAppt.counselor || 'Assigned Counselor'}</p>
+              <div className="mt-4 bg-gradient-to-br from-maroon-50 to-maroon-100 rounded-xl p-4 border border-maroon-200">
+                <div className="flex items-start gap-3 mb-3">
+                  {/* Clickable Counselor Avatar */}
+                  {nextAppt.counselorId && (
+                    <button
+                      onClick={() => {
+                        const counselor = users?.find(u => u.id === nextAppt.counselorId);
+                        if (counselor) setSelectedProfile(counselor);
+                      }}
+                      className="w-12 h-12 bg-maroon-700 text-white rounded-full flex items-center justify-center font-bold hover:bg-maroon-800 transition flex-shrink-0 cursor-pointer"
+                      title="View counselor profile"
+                    >
+                      {nextAppt.counselor?.charAt(0).toUpperCase()}
+                    </button>
+                  )}
+                  {!nextAppt.counselorId && (
+                    <div className="w-12 h-12 bg-maroon-700 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+                      {nextAppt.counselor?.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  
+                  <div className="flex-1">
+                    <h4 className="font-bold text-maroon-900 text-lg">{nextAppt.title}</h4>
+                    <p className="text-sm text-maroon-700">with {nextAppt.counselor}</p>
                   </div>
-                  <span className={`ml-auto text-xs px-2 py-1 rounded-full ${nextAppt.status === 'Confirmed' ? 'bg-green-100 text-green-700' : nextAppt.status === 'Rescheduled' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>{nextAppt.status}</span>
                 </div>
-
-                <div className="flex items-center gap-6 mt-3 text-sm text-gray-700">
-                  <div className="flex items-center gap-2"><Calendar size={16} /> {nextAppt.date}</div>
-                  <div className="flex items-center gap-2"><Clock3 size={16} /> {nextAppt.time}</div>
+                
+                <div className="flex items-center justify-between text-sm text-maroon-800">
+                  <div className="flex items-center gap-1">
+                    <Calendar size={16} />
+                    <span>{nextAppt.date}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock3 size={16} />
+                    <span>{nextAppt.time}</span>
+                  </div>
                 </div>
-
-                <div className="mt-4 flex gap-3">
-                  <button className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100">Reschedule</button>
-                  <button className="px-4 py-2 text-red-600 hover:bg-red-50">Cancel</button>
+                <div className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                  nextAppt.status === 'Confirmed' ? 'bg-green-100 text-green-800' :
+                  nextAppt.status === 'Rescheduled' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-blue-100 text-blue-800'
+                }`}>
+                  {nextAppt.status}
                 </div>
+                
+                {/* Show counselor actions if appointment is accepted and counselor assigned */}
+                {nextAppt.counselorId && (nextAppt.status === 'Confirmed' || nextAppt.status === 'Rescheduled') && (
+                  <div className="mt-4 pt-4 border-t border-maroon-200">
+                    <p className="text-xs text-maroon-700 mb-2 font-medium">Contact your counselor:</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          const counselor = users?.find(u => u.id === nextAppt.counselorId);
+                          if (counselor) setSelectedProfile(counselor);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white text-maroon-700 border border-maroon-300 rounded-lg hover:bg-maroon-50 transition text-sm font-medium"
+                      >
+                        <User2 size={16} />
+                        View Profile
+                      </button>
+                      <button
+                        onClick={() => {
+                          const counselor = users?.find(u => u.id === nextAppt.counselorId);
+                          if (counselor) setChatRecipient(counselor);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-maroon-600 text-white rounded-lg hover:bg-maroon-700 transition text-sm font-medium"
+                      >
+                        <MessageCircle size={16} />
+                        Message
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="mt-4 p-4 rounded-lg border border-gray-200 bg-gray-50 text-center text-gray-600">
-                <p>No upcoming appointments. Request one to get started!</p>
+              <div className="mt-4 text-center py-8 text-gray-500">
+                <p>No upcoming appointments</p>
+                <Link to="/student/request-appointment" className="mt-2 inline-block text-maroon-600 hover:underline">
+                  Request an appointment
+                </Link>
               </div>
             )}
+
+            <div className="mt-4">
+              <Link to="/student/appointments" className="text-maroon-600 hover:underline text-sm inline-flex items-center gap-1">
+                View all appointments <ArrowRight size={14} />
+              </Link>
+            </div>
           </div>
 
-          {/* Right: Psychological Test Results */}
+          {/* Right: Upcoming Test Results */}
           <div className="bg-white rounded-xl shadow p-6 border border-gray-200">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Psychological Test Results</h3>
-                <p className="text-sm text-gray-600">Your latest assessment results</p>
+                <h3 className="text-lg font-semibold text-gray-900">Upcoming Tests</h3>
+                <p className="text-sm text-gray-600">Your scheduled psychological tests</p>
               </div>
             </div>
 
             <div className="mt-4 space-y-3">
-              {myTestResults.length === 0 ? (
-                <p className="text-center text-gray-500 py-4">No test results available yet.</p>
+              {myTests.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No upcoming tests</p>
+                  <Link to="/student/request-psych-test" className="mt-2 inline-block text-maroon-600 hover:underline">
+                    Request a test
+                  </Link>
+                </div>
               ) : (
-                myTestResults.slice(0, 5).map((r) => (
-                  <div key={r.id} className="flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3 bg-gray-50 hover:bg-gray-100 transition">
-                    <div>
-                      <p className="font-medium text-gray-900">{r.testName}</p>
-                      <p className="text-xs text-gray-600">Completed {r.completedDate}</p>
-                      <p className="text-xs text-gray-500">By {r.counselorName}</p>
+                myTests.slice(0, 4).map((test) => {
+                  const counselor = users?.find(u => u.id === test.counselorId);
+                  const isAccepted = test.status === 'accepted' || test.status === 'rescheduled';
+                  return (
+                    <div key={test.id} className="border border-gray-200 rounded-lg px-4 py-3 bg-gray-50 hover:bg-gray-100 transition">
+                      <div className="flex items-start gap-3 mb-2">
+                        {/* Clickable Counselor Avatar */}
+                        {counselor && (
+                          <button
+                            onClick={() => setSelectedProfile(counselor)}
+                            className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold hover:bg-blue-700 transition flex-shrink-0 cursor-pointer"
+                            title="View counselor profile"
+                          >
+                            {counselor.name?.charAt(0).toUpperCase()}
+                          </button>
+                        )}
+                        {!counselor && (
+                          <div className="w-10 h-10 bg-gray-400 text-white rounded-full flex items-center justify-center font-semibold flex-shrink-0">
+                            ?
+                          </div>
+                        )}
+                        
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{test.testType}</p>
+                          <p className="text-xs text-gray-600 mt-1">Date: {test.scheduledDate || test.preferredDate || 'TBD'}</p>
+                          <p className="text-xs text-gray-600">
+                            Status: <span className={`font-medium ${isAccepted ? 'text-green-600' : 'text-yellow-600'}`}>
+                              {test.status}
+                            </span>
+                          </p>
+                          {counselor && (
+                            <p className="text-xs text-gray-500 mt-1">Counselor: {counselor.name}</p>
+                          )}
+                        </div>
+                      </div>
+                      {counselor && isAccepted && (
+                        <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
+                          <button
+                            onClick={() => setSelectedProfile(counselor)}
+                            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-white text-maroon-600 border border-maroon-300 rounded-lg hover:bg-maroon-50 transition font-medium"
+                          >
+                            <User2 size={14} />
+                            Profile
+                          </button>
+                          <button
+                            onClick={() => setChatRecipient(counselor)}
+                            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs bg-maroon-600 text-white rounded-lg hover:bg-maroon-700 transition font-medium"
+                          >
+                            <MessageCircle size={14} />
+                            Message
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <button 
-                      onClick={() => {
-                        alert(`Test: ${r.testName}\n\nSummary:\n${r.summary}\n\nRecommendations:\n${r.recommendations || 'None'}`);
-                      }}
-                      className="text-maroon-600 font-medium hover:underline"
-                    >
-                      View
-                    </button>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
         </div>
+
+        {/* Psychological Test Results - Full Width */}
+        <div className="mt-6 bg-white rounded-xl shadow p-6 border border-gray-200">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Psychological Test Results</h3>
+              <p className="text-sm text-gray-600">Your latest assessment results</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {myTestResults.length === 0 ? (
+              <div className="col-span-full text-center text-gray-500 py-8">
+                <p>No test results available yet.</p>
+              </div>
+            ) : (
+              myTestResults.slice(0, 6).map((r) => (
+                <div key={r.id} className="border border-gray-200 rounded-lg px-4 py-3 bg-gray-50 hover:bg-gray-100 transition">
+                  <p className="font-medium text-gray-900">{r.testName}</p>
+                  <p className="text-xs text-gray-600 mt-1">Completed {r.completedDate}</p>
+                  <p className="text-xs text-gray-500">By {r.counselorName}</p>
+                  <button 
+                    onClick={() => {
+                      alert(`Test: ${r.testName}\n\nSummary:\n${r.summary}\n\nRecommendations:\n${r.recommendations || 'None'}`);
+                    }}
+                    className="mt-2 text-maroon-600 font-medium hover:underline text-sm"
+                  >
+                    View Details
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Modals */}
+      {selectedProfile && (
+        <ProfileViewModal
+          user={selectedProfile}
+          onClose={() => setSelectedProfile(null)}
+          onOpenChat={(user) => {
+            setSelectedProfile(null);
+            setChatRecipient(user);
+          }}
+        />
+      )}
+      {chatRecipient && (
+        <ChatModal
+          recipientUser={chatRecipient}
+          onClose={() => setChatRecipient(null)}
+        />
+      )}
     </div>
   );
 }

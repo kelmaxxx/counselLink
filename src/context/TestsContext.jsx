@@ -66,7 +66,13 @@ export function TestsProvider({ children }) {
 
   const acceptTest = ({ id, date = null, timeSlot = null, note = null }) => {
     const test = tests.find(t => t.id === id);
-    updateTest(id, { status: "accepted", scheduledDate: date, scheduledTimeSlot: timeSlot, note });
+    updateTest(id, { 
+      status: "accepted", 
+      scheduledDate: date, 
+      scheduledTimeSlot: timeSlot, 
+      note,
+      counselorId: currentUser?.id // Assign the counselor who accepted
+    });
     
     // Notify student
     if (notificationCallback && test) {
@@ -84,7 +90,13 @@ export function TestsProvider({ children }) {
 
   const rescheduleTest = ({ id, date, timeSlot, note = null }) => {
     const test = tests.find(t => t.id === id);
-    updateTest(id, { status: "rescheduled", scheduledDate: date, scheduledTimeSlot: timeSlot, note });
+    updateTest(id, { 
+      status: "rescheduled", 
+      scheduledDate: date, 
+      scheduledTimeSlot: timeSlot, 
+      note,
+      counselorId: currentUser?.id // Assign the counselor who rescheduled
+    });
     
     // Notify student
     if (notificationCallback && test) {

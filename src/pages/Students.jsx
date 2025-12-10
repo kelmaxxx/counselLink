@@ -9,9 +9,16 @@ import {
   Trash2,
   Users,
   FileText,
-  Download
+  Download,
+  TrendingUp,
+  Calendar,
+  AlertCircle,
+  Activity,
+  PieChart
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useAppointments } from "../context/AppointmentsContext";
+import { useTests } from "../context/TestsContext";
 
 const COLLEGES = ["CICS", "COE", "CAS", "COB", "COL"];
 
@@ -40,12 +47,103 @@ function downloadCSV(rows, filename = "students.csv") {
   document.body.removeChild(link);
 }
 
+// Pie Chart Component
+function PieChartSVG({ data, totalStudents }) {
+  const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+  const size = 240;
+  const center = size / 2;
+  const radius = size / 2 - 10;
+  
+  const sortedData = Object.entries(data).sort((a, b) => b[1] - a[1]);
+  
+  let currentAngle = -90; // Start from top
+  const slices = sortedData.map(([college, count], index) => {
+    const percentage = (count / totalStudents) * 100;
+    const angle = (percentage / 100) * 360;
+    const startAngle = currentAngle;
+    const endAngle = currentAngle + angle;
+    
+    // Calculate path
+    const startRad = (startAngle * Math.PI) / 180;
+    const endRad = (endAngle * Math.PI) / 180;
+    
+    const x1 = center + radius * Math.cos(startRad);
+    const y1 = center + radius * Math.sin(startRad);
+    const x2 = center + radius * Math.cos(endRad);
+    const y2 = center + radius * Math.sin(endRad);
+    
+    const largeArc = angle > 180 ? 1 : 0;
+    
+    const pathData = [
+      `M ${center} ${center}`,
+      `L ${x1} ${y1}`,
+      `A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`,
+      'Z'
+    ].join(' ');
+    
+    currentAngle = endAngle;
+    
+    return {
+      path: pathData,
+      color: colors[index % colors.length],
+      college,
+      percentage: percentage.toFixed(1)
+    };
+  });
+  
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="drop-shadow-md">
+      {slices.map((slice, index) => (
+        <g key={index}>
+          <path
+            d={slice.path}
+            fill={slice.color}
+            stroke="white"
+            strokeWidth="2"
+            className="transition-all duration-300 hover:opacity-80"
+          />
+        </g>
+      ))}
+      {/* Center circle for donut effect */}
+      <circle
+        cx={center}
+        cy={center}
+        r={radius * 0.5}
+        fill="white"
+        className="drop-shadow-sm"
+      />
+      <text
+        x={center}
+        y={center - 10}
+        textAnchor="middle"
+        className="text-3xl font-bold"
+        fill="#1F2937"
+      >
+        {totalStudents}
+      </text>
+      <text
+        x={center}
+        y={center + 15}
+        textAnchor="middle"
+        className="text-xs"
+        fill="#6B7280"
+      >
+        Students
+      </text>
+    </svg>
+  );
+}
+
 export default function ManageStudents() {
   const { users, createUser } = useAuth();
+  const { appointments } = useAppointments?.() || { appointments: [] };
+  const { tests } = useTests?.() || { tests: [] };
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [collegeFilter, setCollegeFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview"); // "overview" or "students"
 
   const [newStudent, setNewStudent] = useState({
     name: "",
@@ -88,6 +186,50 @@ export default function ManageStudents() {
     });
   }, [studentsSource, searchQuery, collegeFilter]);
 
+  // Analytics calculations
+  const analytics = useMemo(() => {
+    const totalStudents = studentsSource.length;
+    const activeStudents = studentsSource.filter(s => s.status === "active").length;
+    const totalSessions = studentsSource.reduce((acc, s) => acc + (s.sessions || 0), 0);
+    
+    // Appointments stats
+    const totalAppointments = appointments.length;
+    const pendingAppointments = appointments.filter(a => a.status === 'pending').length;
+    const completedAppointments = appointments.filter(a => a.status === 'accepted' || a.status === 'rescheduled').length;
+    
+    // Test stats
+    const totalTests = tests.length;
+    const pendingTests = tests.filter(t => t.status === 'pending').length;
+    
+    // College distribution
+    const collegeDistribution = {};
+    studentsSource.forEach(s => {
+      const college = s.college || "Unknown";
+      collegeDistribution[college] = (collegeDistribution[college] || 0) + 1;
+    });
+    
+    // Recent activity (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const recentAppointments = appointments.filter(a => new Date(a.createdAt) > sevenDaysAgo).length;
+    const recentTests = tests.filter(t => new Date(t.createdAt) > sevenDaysAgo).length;
+    
+    return {
+      totalStudents,
+      activeStudents,
+      totalSessions,
+      avgSessionsPerStudent: totalStudents > 0 ? (totalSessions / totalStudents).toFixed(1) : 0,
+      totalAppointments,
+      pendingAppointments,
+      completedAppointments,
+      totalTests,
+      pendingTests,
+      collegeDistribution,
+      recentActivity: recentAppointments + recentTests,
+      mostActiveCollege: Object.entries(collegeDistribution).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A"
+    };
+  }, [studentsSource, appointments, tests]);
+
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     setAdding(true);
@@ -129,8 +271,193 @@ export default function ManageStudents() {
   return (
     <div className="p-6">
       <div className="max-w-full">
-        {/* Header actions */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-between items-start mb-6">
+        {/* Page Title and Tabs */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4">Manage Students</h2>
+          <div className="flex gap-2 border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`px-4 py-2 font-medium transition ${
+                activeTab === "overview"
+                  ? "text-maroon-600 border-b-2 border-maroon-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <PieChart size={18} />
+                Analytics Overview
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab("students")}
+              className={`px-4 py-2 font-medium transition ${
+                activeTab === "students"
+                  ? "text-maroon-600 border-b-2 border-maroon-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Users size={18} />
+                Student Records
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Overview Tab */}
+        {activeTab === "overview" && (
+          <div className="space-y-6">
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-2 bg-white/80 rounded-lg">
+                    <Users className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <span className="text-xs text-green-600 font-medium bg-white/80 px-2 py-0.5 rounded-full">+12%</span>
+                </div>
+                <p className="text-3xl font-bold text-blue-900">{analytics.totalStudents}</p>
+                <p className="text-sm text-blue-700">Total Students</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-2 bg-white/80 rounded-lg">
+                    <Activity className="w-5 h-5 text-green-600" />
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-green-900">{analytics.activeStudents}</p>
+                <p className="text-sm text-green-700">Active Cases</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-2 bg-white/80 rounded-lg">
+                    <Calendar className="w-5 h-5 text-purple-600" />
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-purple-900">{analytics.totalAppointments}</p>
+                <p className="text-sm text-purple-700">Total Appointments</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-2 bg-white/80 rounded-lg">
+                    <TrendingUp className="w-5 h-5 text-orange-600" />
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-orange-900">{analytics.avgSessionsPerStudent}</p>
+                <p className="text-sm text-orange-700">Avg Sessions/Student</p>
+              </div>
+            </div>
+
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left: College Distribution - Pie Chart */}
+              <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6">Student Distribution by College</h3>
+                <div className="flex flex-col lg:flex-row items-center gap-8">
+                  {/* Pie Chart */}
+                  <div className="relative flex-shrink-0">
+                    <PieChartSVG data={analytics.collegeDistribution} totalStudents={analytics.totalStudents} />
+                  </div>
+                  
+                  {/* Legend */}
+                  <div className="flex-1 space-y-3">
+                    {Object.entries(analytics.collegeDistribution)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([college, count], index) => {
+                        const percentage = (count / analytics.totalStudents) * 100;
+                        const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+                        const color = colors[index % colors.length];
+                        return (
+                          <div key={college} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div 
+                                className="w-4 h-4 rounded-full shadow-sm" 
+                                style={{ backgroundColor: color }}
+                              ></div>
+                              <span className="text-sm font-medium text-gray-700">{college}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm font-semibold text-gray-900">{count} students</span>
+                              <span className="text-xs text-gray-500 ml-2">({percentage.toFixed(1)}%)</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Quick Stats */}
+              <div className="space-y-4">
+                <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-600">Pending Appointments</span>
+                      <span className="font-semibold text-gray-900">{analytics.pendingAppointments}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-600">Completed Sessions</span>
+                      <span className="font-semibold text-gray-900">{analytics.completedAppointments}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-600">Test Requests</span>
+                      <span className="font-semibold text-gray-900">{analytics.totalTests}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <span className="text-sm text-gray-600">Pending Tests</span>
+                      <span className="font-semibold text-gray-900">{analytics.pendingTests}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-sm text-gray-600">Recent Activity (7d)</span>
+                      <span className="font-semibold text-gray-900">{analytics.recentActivity}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white rounded-xl p-6 shadow-lg">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                      <AlertCircle size={20} />
+                    </div>
+                    <h3 className="text-lg font-semibold">Key Insight</h3>
+                  </div>
+                  <p className="text-sm text-white/90 mb-2">Most Active College</p>
+                  <p className="text-3xl font-bold mb-1">{analytics.mostActiveCollege}</p>
+                  <p className="text-sm text-white/80">with {analytics.collegeDistribution[analytics.mostActiveCollege] || 0} students</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Session Overview */}
+            <div className="bg-gradient-to-r from-white to-gray-50 border border-gray-200 rounded-xl p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Session Overview</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white rounded-lg p-4 border-l-4 border-cyan-500 shadow-sm hover:shadow-md transition-shadow">
+                  <p className="text-sm text-gray-600 mb-2">Total Sessions Conducted</p>
+                  <p className="text-3xl font-bold text-cyan-600">{analytics.totalSessions}</p>
+                </div>
+                <div className="bg-white rounded-lg p-4 border-l-4 border-teal-500 shadow-sm hover:shadow-md transition-shadow">
+                  <p className="text-sm text-gray-600 mb-2">Average per Student</p>
+                  <p className="text-3xl font-bold text-teal-600">{analytics.avgSessionsPerStudent}</p>
+                </div>
+                <div className="bg-white rounded-lg p-4 border-l-4 border-emerald-500 shadow-sm hover:shadow-md transition-shadow">
+                  <p className="text-sm text-gray-600 mb-2">Active Caseload</p>
+                  <p className="text-3xl font-bold text-emerald-600">{analytics.activeStudents}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Students Tab */}
+        {activeTab === "students" && (
+          <>
+            {/* Header actions */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start mb-6">
           <div className="flex gap-3 flex-1 items-center">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -300,6 +627,8 @@ export default function ManageStudents() {
             </tbody>
           </table>
         </div>
+          </>
+        )}
       </div>
 
       {/* Add Record Modal */}

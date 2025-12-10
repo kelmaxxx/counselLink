@@ -4,8 +4,10 @@ import { useAuth } from "../../context/AuthContext";
 import { useAppointments } from "../../context/AppointmentsContext";
 import { useTests } from "../../context/TestsContext";
 import { COLLEGES } from "../../data/mockData";
-import { Users, Calendar, Clock3, FileText, ArrowRight, CheckCircle2, X } from "lucide-react";
+import { Users, Calendar, Clock3, FileText, ArrowRight, CheckCircle2, X, User2, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
+import ProfileViewModal from "../../components/ProfileViewModal";
+import ChatModal from "../../components/ChatModal";
 
 export default function CounselorDashboard() {
   const { currentUser, users } = useAuth();
@@ -16,6 +18,8 @@ export default function CounselorDashboard() {
   const myTests = getTestsForCurrentUser ? getTestsForCurrentUser() : [];
   
   const [rescheduleModal, setRescheduleModal] = useState({ open: false, apptId: null, date: "", timeSlot: "", note: "" });
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [chatRecipient, setChatRecipient] = useState(null);
   
   const students = users?.filter((u) => u.role === "student") || [];
 
@@ -203,22 +207,63 @@ export default function CounselorDashboard() {
               </div>
             ) : (
               <div className="space-y-3">
-                {pendingAppointments.slice(0, 3).map((appt) => (
-                  <div key={appt.id} className="p-4 rounded-lg border border-gray-200 bg-gray-50">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">{appt.studentName}</p>
-                        <p className="text-sm text-gray-600">{appt.college || 'N/A'} • General Counseling</p>
-                        <p className="text-xs text-gray-500 mt-1">{appt.preferredDate} at {Array.isArray(appt.preferredSlots) ? appt.preferredSlots[0] : appt.timeSlot}</p>
+                {pendingAppointments.slice(0, 3).map((appt) => {
+                  const student = users?.find(u => u.id === appt.studentUserId);
+                  return (
+                    <div key={appt.id} className="p-4 rounded-lg border border-gray-200 bg-gray-50">
+                      <div className="flex items-start gap-3 mb-3">
+                        {/* Clickable Profile Avatar */}
+                        {student && (
+                          <button
+                            onClick={() => setSelectedProfile(student)}
+                            className="w-10 h-10 bg-maroon-600 text-white rounded-full flex items-center justify-center font-semibold hover:bg-maroon-700 transition flex-shrink-0 cursor-pointer"
+                            title="View student profile"
+                          >
+                            {appt.studentName?.charAt(0).toUpperCase()}
+                          </button>
+                        )}
+                        {!student && (
+                          <div className="w-10 h-10 bg-gray-400 text-white rounded-full flex items-center justify-center font-semibold flex-shrink-0">
+                            {appt.studentName?.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{appt.studentName}</p>
+                          <p className="text-sm text-gray-600">{appt.college || 'N/A'} • General Counseling</p>
+                          <p className="text-xs text-gray-500 mt-1">{appt.preferredDate} at {Array.isArray(appt.preferredSlots) ? appt.preferredSlots[0] : appt.timeSlot}</p>
+                        </div>
                       </div>
+                      
+                      {/* Student Actions */}
+                      {student && (
+                        <div className="flex gap-2 mb-3 pb-3 border-b border-gray-200">
+                          <button
+                            onClick={() => setSelectedProfile(student)}
+                            className="flex items-center gap-1 px-2 py-1 text-xs bg-white text-maroon-600 border border-maroon-300 rounded-lg hover:bg-maroon-50 transition font-medium"
+                          >
+                            <User2 size={14} />
+                            View Profile
+                          </button>
+                          <button
+                            onClick={() => setChatRecipient(student)}
+                            className="flex items-center gap-1 px-2 py-1 text-xs bg-maroon-600 text-white rounded-lg hover:bg-maroon-700 transition font-medium"
+                          >
+                            <MessageCircle size={14} />
+                            Message
+                          </button>
+                        </div>
+                      )}
+                      
+                      {/* Appointment Actions */}
                       <div className="flex gap-2">
-                        <button onClick={() => handleAccept(appt.id)} className="px-3 py-1 bg-maroon-500 text-white rounded text-xs hover:bg-maroon-600">Accept</button>
+                        <button onClick={() => handleAccept(appt.id)} className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700">Accept</button>
                         <button onClick={() => openReschedule(appt.id)} className="px-3 py-1 border border-gray-300 text-gray-700 rounded text-xs hover:bg-gray-100">Reschedule</button>
                         <button onClick={() => handleReject(appt.id)} className="px-3 py-1 text-red-600 text-xs hover:bg-red-50 rounded">Reject</button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -246,22 +291,63 @@ export default function CounselorDashboard() {
               </div>
             ) : (
               <div className="space-y-3">
-                {pendingTests.slice(0, 3).map((test) => (
-                  <div key={test.id} className="p-4 rounded-lg border border-blue-200 bg-blue-50">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">{test.studentName}</p>
-                        <p className="text-sm text-gray-600">{test.college || 'N/A'} • {test.testType || 'Psychological Test'}</p>
-                        <p className="text-xs text-gray-500 mt-1">{test.preferredDate} at {Array.isArray(test.preferredSlots) ? test.preferredSlots[0] : 'N/A'}</p>
+                {pendingTests.slice(0, 3).map((test) => {
+                  const student = users?.find(u => u.id === test.studentUserId);
+                  return (
+                    <div key={test.id} className="p-4 rounded-lg border border-blue-200 bg-blue-50">
+                      <div className="flex items-start gap-3 mb-3">
+                        {/* Clickable Profile Avatar */}
+                        {student && (
+                          <button
+                            onClick={() => setSelectedProfile(student)}
+                            className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold hover:bg-blue-700 transition flex-shrink-0 cursor-pointer"
+                            title="View student profile"
+                          >
+                            {test.studentName?.charAt(0).toUpperCase()}
+                          </button>
+                        )}
+                        {!student && (
+                          <div className="w-10 h-10 bg-gray-400 text-white rounded-full flex items-center justify-center font-semibold flex-shrink-0">
+                            {test.studentName?.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{test.studentName}</p>
+                          <p className="text-sm text-gray-600">{test.college || 'N/A'} • {test.testType || 'Psychological Test'}</p>
+                          <p className="text-xs text-gray-500 mt-1">{test.preferredDate} at {Array.isArray(test.preferredSlots) ? test.preferredSlots[0] : 'N/A'}</p>
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <button onClick={() => handleAcceptTest(test.id)} className="px-3 py-1 bg-maroon-500 text-white rounded text-xs hover:bg-maroon-600 whitespace-nowrap">Accept</button>
+                      
+                      {/* Student Actions */}
+                      {student && (
+                        <div className="flex gap-2 mb-3 pb-3 border-b border-blue-200">
+                          <button
+                            onClick={() => setSelectedProfile(student)}
+                            className="flex items-center gap-1 px-2 py-1 text-xs bg-white text-maroon-600 border border-maroon-300 rounded-lg hover:bg-maroon-50 transition font-medium"
+                          >
+                            <User2 size={14} />
+                            View Profile
+                          </button>
+                          <button
+                            onClick={() => setChatRecipient(student)}
+                            className="flex items-center gap-1 px-2 py-1 text-xs bg-maroon-600 text-white rounded-lg hover:bg-maroon-700 transition font-medium"
+                          >
+                            <MessageCircle size={14} />
+                            Message
+                          </button>
+                        </div>
+                      )}
+                      
+                      {/* Test Actions */}
+                      <div className="flex gap-2">
+                        <button onClick={() => handleAcceptTest(test.id)} className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 whitespace-nowrap">Accept</button>
                         <button onClick={() => openRescheduleTest(test.id)} className="px-3 py-1 border border-gray-300 text-gray-700 rounded text-xs hover:bg-gray-100 whitespace-nowrap">Reschedule</button>
                         <button onClick={() => handleRejectTest(test.id)} className="px-3 py-1 text-red-600 text-xs hover:bg-red-50 rounded whitespace-nowrap">Reject</button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -276,33 +362,30 @@ export default function CounselorDashboard() {
         </div>
 
         {/* Students by College - Full Width */}
-        <div className="grid grid-cols-1 gap-6">
-          {/* Students by College */}
-          <div className="bg-white rounded-xl shadow p-6 border border-gray-200">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Students by College</h3>
-                <p className="text-sm text-gray-600">Distribution of your caseload</p>
-              </div>
+        <div className="bg-white rounded-xl shadow p-6 border border-gray-200">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Students by College</h3>
+              <p className="text-sm text-gray-600">Distribution of your caseload</p>
             </div>
+          </div>
 
-            <div className="space-y-4">
-              {topColleges.map(([college, count], index) => (
-                <div key={college}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-700">{college}</span>
-                    <span className="text-sm text-gray-600">{count} students</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className={`${barColors[index % barColors.length]} h-2 rounded-full`} style={{ width: `${(count / maxStudents) * 100}%` }}></div>
-                  </div>
+          <div className="space-y-4">
+            {topColleges.map(([college, count], index) => (
+              <div key={college}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-gray-700">{college}</span>
+                  <span className="text-sm text-gray-600">{count} students</span>
                 </div>
-              ))}
-            </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className={`${barColors[index % barColors.length]} h-2 rounded-full`} style={{ width: `${(count / maxStudents) * 100}%` }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
 
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <p className="text-sm text-gray-700">Total Students: <span className="font-bold text-gray-900">{totalStudents}</span></p>
-            </div>
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <p className="text-sm text-gray-700">Total Students: <span className="font-bold text-gray-900">{totalStudents}</span></p>
           </div>
         </div>
       </div>
@@ -375,6 +458,24 @@ export default function CounselorDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modals */}
+      {selectedProfile && (
+        <ProfileViewModal
+          user={selectedProfile}
+          onClose={() => setSelectedProfile(null)}
+          onOpenChat={(user) => {
+            setSelectedProfile(null);
+            setChatRecipient(user);
+          }}
+        />
+      )}
+      {chatRecipient && (
+        <ChatModal
+          recipientUser={chatRecipient}
+          onClose={() => setChatRecipient(null)}
+        />
       )}
     </div>
   );

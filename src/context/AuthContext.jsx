@@ -95,8 +95,26 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("currentUser");
   };
 
+  // updateUser: update user profile
+  const updateUser = (userId, updates) => {
+    setUsers((prev) => {
+      const next = prev.map(u => u.id === userId ? { ...u, ...updates } : u);
+      localStorage.setItem("users", JSON.stringify(next));
+      return next;
+    });
+    
+    // If updating current user, update currentUser state too
+    if (currentUser?.id === userId) {
+      const updatedUser = { ...currentUser, ...updates };
+      setCurrentUser(updatedUser);
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+    }
+    
+    return { success: true };
+  };
+
   return (
-    <AuthContext.Provider value={{ users, currentUser, login, signup, createUser, logout }}>
+    <AuthContext.Provider value={{ users, currentUser, login, signup, createUser, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
