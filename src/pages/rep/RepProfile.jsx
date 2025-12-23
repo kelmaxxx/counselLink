@@ -73,7 +73,7 @@ export default function RepProfile() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white border border-gray-200 p-6 rounded-xl shadow">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
           
@@ -208,7 +208,7 @@ export default function RepProfile() {
           )}
         </div>
 
-        <div className="lg:col-span-2 bg-white border border-gray-200 p-6 rounded-xl shadow">
+        <div className="bg-white border border-gray-200 p-6 rounded-xl shadow">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Responsibilities</h3>
           <ul className="space-y-3 text-gray-600">
             <li className="flex items-start">

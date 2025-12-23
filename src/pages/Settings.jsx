@@ -94,7 +94,7 @@ export default function Settings() {
         </div>
         
         <p className="text-gray-600 mb-6">
-          Transfer your CounselLink data between different systems or browsers. Export your data to a JSON file, 
+          Transfer your CounseLink data between different systems or browsers. Export your data to a JSON file, 
           then import it on another system to continue where you left off.
         </p>
 
@@ -191,7 +191,7 @@ export default function Settings() {
             <ol className="list-decimal list-inside space-y-1 ml-2">
               <li>On your current system, click "Export" to download your data</li>
               <li>Transfer the downloaded JSON file to your new system (via email, USB drive, cloud storage, etc.)</li>
-              <li>On the new system, open CounselLink and go to Settings</li>
+              <li>On the new system, open CounseLink and go to Settings</li>
               <li>Click "Import" and select the JSON file you transferred</li>
               <li>Log in again with your credentials</li>
             </ol>

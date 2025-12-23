@@ -4,13 +4,16 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   Calendar, Users, FileText, Bell, LogOut, User,
-  ClipboardList, BarChart3, Settings, BookOpen, AlertCircle
+  ClipboardList, BarChart3, Settings, BookOpen, AlertCircle, UserCheck
 } from "lucide-react";
 
 function Sidebar({ currentUser: propUser, activeView, setActiveView, handleLogout }) {
-  const { currentUser: ctxUser } = useAuth();
+  const { currentUser: ctxUser, users } = useAuth();
   const currentUser = propUser || ctxUser;
   const navigate = useNavigate();
+
+  // Count pending registrations for admin
+  const pendingCount = users?.filter(u => u.role === "student" && u.status === "pending_approval").length || 0;
 
 const idToPath = {
   // Student
@@ -30,6 +33,7 @@ const idToPath = {
   "request-data": "/rep/request-data",
   
   // Admin
+  "pending-registrations": "/admin/pending-registrations",
   "manage-users": "/admin/manage-users",
   announcements: "/admin/announcements",
   reports: "/admin/reports",
@@ -66,6 +70,7 @@ const idToPath = {
       case "admin":
         return [
           { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+          { id: "pending-registrations", label: "Pending Registrations", icon: UserCheck },
           { id: "manage-users", label: "Manage User Accounts", icon: Settings },
           { id: "announcements", label: "Create Announcement", icon: AlertCircle },
           { id: "reports", label: "System Reports", icon: FileText },
@@ -81,7 +86,7 @@ const idToPath = {
     return (
       <div className="w-64 bg-maroon-500 text-white flex flex-col shadow-lg">
         <div className="p-6 border-b border-maroon-700">
-          <h1 className="text-2xl font-bold">CounselLink</h1>
+          <h1 className="text-2xl font-bold">CounseLink</h1>
         </div>
       </div>
     );
@@ -92,7 +97,7 @@ const idToPath = {
   return (
     <div className="w-64 bg-maroon-500 text-white flex flex-col shadow-lg">
       <div className="p-6 border-b border-maroon-700">
-        <h1 className="text-2xl font-bold">CounselLink</h1>
+        <h1 className="text-2xl font-bold">CounseLink</h1>
         <div className="mt-2 text-sm text-maroon-100">
           <div className="font-medium text-white">{currentUser.name}</div>
           <div className="capitalize">{currentUser.role?.replace('_', ' ')}</div>
@@ -103,6 +108,7 @@ const idToPath = {
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
+          const showBadge = item.id === "pending-registrations" && pendingCount > 0;
           return (
             <button
               key={item.id}
@@ -118,7 +124,12 @@ const idToPath = {
               }`}
             >
               <Icon size={20} />
-              <span>{item.label}</span>
+              <span className="flex-1 text-left">{item.label}</span>
+              {showBadge && (
+                <span className="bg-yellow-400 text-maroon-900 text-xs font-bold px-2 py-1 rounded-full">
+                  {pendingCount}
+                </span>
+              )}
             </button>
           );
         })}

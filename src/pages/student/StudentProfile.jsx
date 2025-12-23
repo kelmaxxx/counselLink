@@ -186,88 +186,47 @@ export default function StudentProfile() {
           )}
         </div>
 
-        {/* Academic Information */}
+        {/* Academic Information - READ ONLY (Set by Admin) */}
         <div className="bg-white border border-gray-200 p-6 rounded-xl shadow">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Academic Information</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Academic Information</h3>
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Set by Admin</span>
+          </div>
           
-          {isEditing ? (
-            <div className="space-y-4">
-              {/* College */}
-              <div>
-                <label className="text-sm text-gray-600 font-medium flex items-center gap-2 mb-1">
-                  <GraduationCap size={16} />
-                  College
-                </label>
-                <select
-                  value={formData.college}
-                  onChange={(e) => setFormData({ ...formData, college: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-maroon-500 focus:border-transparent"
-                >
-                  <option value="">Select College</option>
-                  {colleges.map(col => (
-                    <option key={col} value={col}>{col}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Program/Course */}
-              <div>
-                <label className="text-sm text-gray-600 font-medium flex items-center gap-2 mb-1">
-                  <BookOpen size={16} />
-                  Program/Course
-                </label>
-                <input
-                  type="text"
-                  value={formData.program}
-                  onChange={(e) => setFormData({ ...formData, program: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-maroon-500 focus:border-transparent"
-                  placeholder="e.g., BS Computer Science"
-                />
-              </div>
-
-              {/* Year Level */}
-              <div>
-                <label className="text-sm text-gray-600 font-medium flex items-center gap-2 mb-1">
-                  <Calendar size={16} />
-                  Year Level
-                </label>
-                <select
-                  value={formData.yearLevel}
-                  onChange={(e) => setFormData({ ...formData, yearLevel: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-maroon-500 focus:border-transparent"
-                >
-                  <option value="">Select Year Level</option>
-                  {yearLevels.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-gray-600 flex items-center gap-2">
+                <GraduationCap size={16} />
+                College
+              </label>
+              <p className="font-medium text-gray-900 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+                {myRecord?.college || "Not set"}
+              </p>
             </div>
-          ) : (
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm text-gray-600 flex items-center gap-2">
-                  <GraduationCap size={16} />
-                  College
-                </label>
-                <p className="font-medium text-gray-900">{myRecord?.college || "Not provided"}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 flex items-center gap-2">
-                  <BookOpen size={16} />
-                  Program/Course
-                </label>
-                <p className="font-medium text-gray-900">{myRecord?.program || "Not provided"}</p>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 flex items-center gap-2">
-                  <Calendar size={16} />
-                  Year Level
-                </label>
-                <p className="font-medium text-gray-900">{myRecord?.yearLevel || "Not provided"}</p>
-              </div>
+            <div>
+              <label className="text-sm text-gray-600 flex items-center gap-2">
+                <BookOpen size={16} />
+                Program/Course
+              </label>
+              <p className="font-medium text-gray-900 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+                {myRecord?.program || "Not set"}
+              </p>
             </div>
-          )}
+            <div>
+              <label className="text-sm text-gray-600 flex items-center gap-2">
+                <Calendar size={16} />
+                Year Level
+              </label>
+              <p className="font-medium text-gray-900 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+                {myRecord?.yearLevel || "Not set"}
+              </p>
+            </div>
+          </div>
+          
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
+            <p className="font-semibold mb-1">ℹ️ Note:</p>
+            <p>Academic information is verified and set by the admin based on your Certificate of Registration. Contact the admin if you need to update this information.</p>
+          </div>
         </div>
 
         {/* Bio/About */}

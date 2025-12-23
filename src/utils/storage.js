@@ -61,7 +61,7 @@ export const storage = {
     }
   },
 
-  // Export all CounselLink data as JSON
+  // Export all CounseLink data as JSON
   exportData: () => {
     try {
       const store = getStorage();
@@ -124,7 +124,7 @@ export const storage = {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `counsellink-data-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `counselink-data-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

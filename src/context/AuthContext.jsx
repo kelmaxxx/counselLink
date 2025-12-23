@@ -32,6 +32,23 @@ export function AuthProvider({ children }) {
     });
 
     if (found) {
+      // Check if student account is approved
+      if (found.role === "student" && found.status === "pending_approval") {
+        return { 
+          success: false, 
+          message: "Your account is pending approval. Please wait for admin verification.",
+          status: "pending_approval"
+        };
+      }
+
+      if (found.role === "student" && found.status === "rejected") {
+        return { 
+          success: false, 
+          message: "Your account was rejected. Reason: " + (found.rejectionReason || "Please contact admin."),
+          status: "rejected"
+        };
+      }
+
       setCurrentUser(found);
       localStorage.setItem("currentUser", JSON.stringify(found));
       return { success: true, user: found };
@@ -40,10 +57,21 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // signup (adds to in-memory users, returns user) - signs user in
-  const signup = ({ name, email, password, role = "student", college = null, studentId = null }) => {
+  // signup (adds to in-memory users, returns user) - FOR STUDENT: pending approval
+  const signup = ({ name, email, password, role = "student", college = null, studentId = null, phone = "", corImage = null }) => {
+    // Check for duplicate email
     if (users.find((u) => u.email.toLowerCase() === email.toLowerCase())) {
       return { success: false, message: "Email already in use" };
+    }
+
+    // Check for duplicate student ID (for students)
+    if (role === "student" && studentId && users.find((u) => u.studentId === studentId)) {
+      return { success: false, message: "Student ID already registered" };
+    }
+
+    // Validate MSU email for students
+    if (role === "student" && !email.toLowerCase().endsWith("@msu.edu.ph")) {
+      return { success: false, message: "Please use your MSU institutional email (@msu.edu.ph)" };
     }
 
     const newId = users.reduce((max, u) => Math.max(max, u.id || 0), 0) + 1;
@@ -54,16 +82,46 @@ export function AuthProvider({ children }) {
       password,
       role,
       college: role === "student" || role === "college_rep" ? college : null,
-      studentId: role === "student" ? studentId : undefined
+      studentId: role === "student" ? studentId : undefined,
+      phone: phone || "",
+      
+      // COR Verification fields (for students)
+      status: role === "student" ? "pending_approval" : "approved",
+      corImage: role === "student" ? corImage : null,
+      program: null,  // Admin will set after reviewing COR
+      yearLevel: null, // Admin will set after reviewing COR
+      
+      // Tracking
+      submittedAt: new Date().toISOString(),
+      approvedBy: null,
+      approvedAt: null,
+      rejectionReason: null,
+      canLogin: role !== "student", // Students can't login until approved
+      
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
+
     setUsers((prev) => {
       const next = [...prev, newUser];
       localStorage.setItem("users", JSON.stringify(next));
       return next;
     });
-    setCurrentUser(newUser); // signup logs in
-    localStorage.setItem("currentUser", JSON.stringify(newUser));
-    return { success: true, user: newUser };
+
+    // For students: don't log them in (pending approval)
+    // For other roles: log them in immediately
+    if (role !== "student") {
+      setCurrentUser(newUser);
+      localStorage.setItem("currentUser", JSON.stringify(newUser));
+    }
+
+    return { 
+      success: true, 
+      user: newUser,
+      message: role === "student" 
+        ? "Registration submitted! Please wait for admin approval (24-48 hours)." 
+        : "Account created successfully!"
+    };
   };
 
   // createUser: add user without changing currentUser (for admin create)
@@ -113,8 +171,65 @@ export function AuthProvider({ children }) {
     return { success: true };
   };
 
+  // approveRegistration: admin approves student registration
+  const approveRegistration = (userId, { program, yearLevel, approvedBy }) => {
+    setUsers((prev) => {
+      const next = prev.map(u => {
+        if (u.id === userId) {
+          return {
+            ...u,
+            status: "approved",
+            program,
+            yearLevel,
+            approvedBy,
+            approvedAt: new Date().toISOString(),
+            canLogin: true,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return u;
+      });
+      localStorage.setItem("users", JSON.stringify(next));
+      return next;
+    });
+    return { success: true };
+  };
+
+  // rejectRegistration: admin rejects student registration
+  const rejectRegistration = (userId, { reason, rejectedBy }) => {
+    setUsers((prev) => {
+      const next = prev.map(u => {
+        if (u.id === userId) {
+          return {
+            ...u,
+            status: "rejected",
+            rejectionReason: reason,
+            rejectedBy,
+            rejectedAt: new Date().toISOString(),
+            canLogin: false,
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return u;
+      });
+      localStorage.setItem("users", JSON.stringify(next));
+      return next;
+    });
+    return { success: true };
+  };
+
   return (
-    <AuthContext.Provider value={{ users, currentUser, login, signup, createUser, logout, updateUser }}>
+    <AuthContext.Provider value={{ 
+      users, 
+      currentUser, 
+      login, 
+      signup, 
+      createUser, 
+      logout, 
+      updateUser,
+      approveRegistration,
+      rejectRegistration
+    }}>
       {children}
     </AuthContext.Provider>
   );

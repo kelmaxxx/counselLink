@@ -34,6 +34,7 @@ import CreateAnnouncement from "./pages/admin/CreateAnnouncement";
 import AdminReports from "./pages/admin/AdminReports";
 import AdminProfile from "./pages/admin/AdminProfile";
 import AdminNotifications from "./pages/admin/AdminNotifications";
+import PendingRegistrations from "./pages/admin/PendingRegistrations";
 
 export default function App() {
   return (
@@ -200,6 +201,16 @@ export default function App() {
         />
 
         {/* Admin Routes */}
+        <Route
+          path="/admin/pending-registrations"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <PendingRegistrations />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/admin/manage-users"
           element={

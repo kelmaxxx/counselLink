@@ -7,7 +7,7 @@ import { useNotifications } from "../context/NotificationsContext";
 export default function Header({ currentUser }) {
   const location = useLocation();
   const isDashboard = location.pathname === "/";
-  const title = isDashboard ? "Dashboard" : "CounselLink";
+  const title = isDashboard ? "Dashboard" : "CounseLink";
   
   const { getUnreadCount } = useNotifications();
   const unreadCount = getUnreadCount();
