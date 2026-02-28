@@ -24,6 +24,7 @@ export default function StudentDashboard() {
 
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [chatRecipient, setChatRecipient] = useState(null);
+  const [expandedTestResult, setExpandedTestResult] = useState(null);
 
   // Compute upcoming, pending, etc.
   const upcoming = myAppointments.filter(a => a.status === 'accepted' || a.status === 'rescheduled');
@@ -33,7 +34,7 @@ export default function StudentDashboard() {
   const pendingTests = myTests.filter(t => t.status === 'pending');
 
   const upcomingCount = upcoming.length + upcomingTests.length;
-  const completedCount = 5; // placeholder until we track completed
+  const completedCount = myAppointments.filter(a => a.status === 'completed' || a.status === 'accepted').length;
   const pendingCount = pending.length + pendingTests.length;
   const testResultsCount = myTestResults.length;
 
@@ -344,13 +345,25 @@ export default function StudentDashboard() {
                   <p className="text-xs text-gray-600 mt-1">Completed {r.completedDate}</p>
                   <p className="text-xs text-gray-500">By {r.counselorName}</p>
                   <button 
-                    onClick={() => {
-                      alert(`Test: ${r.testName}\n\nSummary:\n${r.summary}\n\nRecommendations:\n${r.recommendations || 'None'}`);
-                    }}
+                    onClick={() => setExpandedTestResult(expandedTestResult === r.id ? null : r.id)}
                     className="mt-2 text-maroon-600 font-medium hover:underline text-sm"
                   >
-                    View Details
+                    {expandedTestResult === r.id ? 'Hide Details' : 'View Details'}
                   </button>
+                  {expandedTestResult === r.id && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-700">Summary:</p>
+                        <p className="text-xs text-gray-600 mt-1">{r.summary}</p>
+                      </div>
+                      {r.recommendations && (
+                        <div>
+                          <p className="text-xs font-semibold text-gray-700">Recommendations:</p>
+                          <p className="text-xs text-gray-600 mt-1">{r.recommendations}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))
             )}

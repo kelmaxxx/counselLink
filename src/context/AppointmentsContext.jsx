@@ -11,13 +11,14 @@ export function setNotificationCallback(callback) {
 }
 
 export function AppointmentsProvider({ children }) {
-  const { users, currentUser } = useAuth();
+  const { users = [], currentUser, token } = useAuth();
+  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:5000";
   const [appointments, setAppointments] = useState(() => {
     const s = localStorage.getItem("appointments");
     return s ? JSON.parse(s) : [];
   });
 
-  const counselors = useMemo(() => users.filter(u => u.role === "counselor"), [users]);
+  const counselors = useMemo(() => (users || []).filter(u => u.role === "counselor"), [users]);
 
   const autoAssignCounselorId = (student) => {
     // Try find counselor with matching college, else first available counselor
@@ -25,65 +26,30 @@ export function AppointmentsProvider({ children }) {
     return (byCollege || counselors[0] || {}).id || null;
   };
 
-  const createAppointment = ({ student, form }) => {
-    const id = appointments.reduce((m, a) => Math.max(m, a.id || 0), 0) + 1;
-    const controlNo = `APT-${Date.now()}`;
-    const counselorId = autoAssignCounselorId(student);
-
+  const createAppointment = async ({ student, form }) => {
     const preferredSlots = Array.isArray(form.preferredSlots) ? form.preferredSlots : (form.timeSlot ? [form.timeSlot] : []);
 
-    const appt = {
-      id,
-      controlNo,
-      status: "pending",
-      isUrgent: !!form.isUrgent,
-      reason: form.reason || "",
-      phoneNumber: form.phoneNumber || "",
-      preferredDate: form.date,
-      timeSlot: form.timeSlot || null,
-      preferredSlots,
-      scheduledDate: null, // set when accepted/rescheduled
-      scheduledTimeSlot: null,
-      studentId: student.studentId,
-      studentUserId: student.id,
-      studentName: student.name,
-      college: student.college || null,
-      counselorId,
-      note: null,
-      intakeForm: {
-        dateToday: new Date().toISOString().split('T')[0],
-        nameOptional: form.nameOptional || "",
-        idNo: student.studentId,
-        college: student.college || null,
-        phoneNumber: form.phoneNumber || "",
-        preferredAppointmentDate: form.date,
-        isUrgent: !!form.isUrgent,
-        preferredSlots,
-        studentSignature: null,
-        authorizedSignature: null,
+    const response = await fetch(`${apiBase}/api/appointments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      sessionForm: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setAppointments((prev) => {
-      const next = [appt, ...prev];
-      localStorage.setItem("appointments", JSON.stringify(next));
-      return next;
+      body: JSON.stringify({
+        preferredDate: form.date,
+        preferredSlots,
+        isUrgent: form.isUrgent,
+        phoneNumber: form.phoneNumber,
+        reason: form.reason,
+      }),
     });
-    
-    // Notify counselor
-    if (notificationCallback && counselorId) {
-      notificationCallback({
-        recipientId: counselorId,
-        title: "New Appointment Request",
-        message: `${student.name} has requested an appointment for ${form.date}.`,
-        type: "info",
-        link: "/counselor/appointments"
-      });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return { success: false, message: data.message || "Failed to submit appointment" };
     }
-    
-    return { success: true, appointment: appt };
+
+    return { success: true, appointment: data };
   };
 
   const updateAppointment = (id, updater) => {
@@ -94,71 +60,69 @@ export function AppointmentsProvider({ children }) {
     });
   };
 
-  const acceptAppointment = ({ id, date = null, timeSlot = null, note = null }) => {
-    const appt = appointments.find(a => a.id === id);
-    updateAppointment(id, { status: "accepted", scheduledDate: date, scheduledTimeSlot: timeSlot, note });
-    
-    // Notify student
-    if (notificationCallback && appt) {
-      notificationCallback({
-        recipientId: appt.studentUserId,
-        title: "Appointment Accepted",
-        message: `Your appointment request for ${date || appt.preferredDate} has been accepted.`,
-        type: "success",
-        link: "/"
-      });
+  const fetchAppointments = async () => {
+    const response = await fetch(`${apiBase}/api/appointments`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Unable to load appointments");
     }
-    
+    return data;
+  };
+
+  const acceptAppointment = async ({ id, date = null, timeSlot = null, note = null }) => {
+    const response = await fetch(`${apiBase}/api/appointments/${id}/accept`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ date, timeSlot, note }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      return { success: false, message: data.message || "Unable to accept appointment" };
+    }
     return { success: true };
   };
 
-  const rescheduleAppointment = ({ id, date, timeSlot, note = null }) => {
-    const appt = appointments.find(a => a.id === id);
-    updateAppointment(id, { status: "rescheduled", scheduledDate: date, scheduledTimeSlot: timeSlot, note });
-    
-    // Notify student
-    if (notificationCallback && appt) {
-      notificationCallback({
-        recipientId: appt.studentUserId,
-        title: "Appointment Rescheduled",
-        message: `Your appointment has been rescheduled to ${date} at ${timeSlot}.${note ? ' Note: ' + note : ''}`,
-        type: "warning",
-        link: "/"
-      });
+  const rescheduleAppointment = async ({ id, date, timeSlot, note = null }) => {
+    const response = await fetch(`${apiBase}/api/appointments/${id}/reschedule`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ date, timeSlot, note }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      return { success: false, message: data.message || "Unable to reschedule appointment" };
     }
-    
     return { success: true };
   };
 
-  const rejectAppointment = ({ id, note = null }) => {
-    const appt = appointments.find(a => a.id === id);
-    updateAppointment(id, { status: "rejected", note });
-    
-    // Notify student
-    if (notificationCallback && appt) {
-      notificationCallback({
-        recipientId: appt.studentUserId,
-        title: "Appointment Rejected",
-        message: `Your appointment request has been rejected.${note ? ' Reason: ' + note : ''}`,
-        type: "error",
-        link: "/"
-      });
+  const rejectAppointment = async ({ id, note = null }) => {
+    const response = await fetch(`${apiBase}/api/appointments/${id}/reject`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ note }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      return { success: false, message: data.message || "Unable to reject appointment" };
     }
-    
     return { success: true };
   };
 
-  const getAppointmentsForCurrentUser = () => {
-    if (!currentUser) return [];
-    if (currentUser.role === "student") {
-      return appointments.filter(a => a.studentUserId === currentUser.id);
-    }
-    if (currentUser.role === "counselor") {
-      return appointments.filter(a => a.counselorId === currentUser.id);
-    }
-    // admins/others see all
-    return appointments;
-  };
+  const getAppointmentsForCurrentUser = () => appointments;
 
   const saveSessionForm = (id, data) => {
     updateAppointment(id, { sessionForm: data });
@@ -173,6 +137,7 @@ export function AppointmentsProvider({ children }) {
       rescheduleAppointment,
       rejectAppointment,
       getAppointmentsForCurrentUser,
+      fetchAppointments,
       saveSessionForm,
     }}>
       {children}

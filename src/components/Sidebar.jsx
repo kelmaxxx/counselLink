@@ -1,6 +1,6 @@
 // src/components/Sidebar.jsx
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   Calendar, Users, FileText, Bell, LogOut, User,
@@ -11,6 +11,7 @@ function Sidebar({ currentUser: propUser, activeView, setActiveView, handleLogou
   const { currentUser: ctxUser, users } = useAuth();
   const currentUser = propUser || ctxUser;
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Count pending registrations for admin
   const pendingCount = users?.filter(u => u.role === "student" && u.status === "pending_approval").length || 0;
@@ -109,16 +110,17 @@ const idToPath = {
         {navItems.map((item) => {
           const Icon = item.icon;
           const showBadge = item.id === "pending-registrations" && pendingCount > 0;
+          const itemPath = idToPath[item.id] || "/";
+          const isActive = location.pathname === itemPath || location.pathname.startsWith(itemPath + "/");
           return (
             <button
               key={item.id}
               onClick={() => {
                 if (setActiveView) setActiveView(item.id);
-                const path = idToPath[item.id] || "/";
-                navigate(path);
+                navigate(itemPath);
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-                activeView === item.id
+                isActive
                   ? "bg-maroon-700 text-white"
                   : "text-maroon-50 hover:bg-maroon-600"
               }`}

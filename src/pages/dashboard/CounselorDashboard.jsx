@@ -11,10 +11,28 @@ import ChatModal from "../../components/ChatModal";
 
 export default function CounselorDashboard() {
   const { currentUser, users } = useAuth();
-  const { getAppointmentsForCurrentUser, acceptAppointment, rescheduleAppointment, rejectAppointment } = useAppointments?.() || {};
+  const { getAppointmentsForCurrentUser, fetchAppointments, acceptAppointment, rescheduleAppointment, rejectAppointment } = useAppointments?.() || {};
   const { getTestsForCurrentUser, acceptTest, rescheduleTest, rejectTest } = useTests?.() || {};
   
-  const myAppointments = getAppointmentsForCurrentUser ? getAppointmentsForCurrentUser() : [];
+  const [myAppointments, setMyAppointments] = useState([]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    const loadAppointments = async () => {
+      try {
+        const data = await fetchAppointments();
+        if (mounted) setMyAppointments(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    if (fetchAppointments) {
+      loadAppointments();
+    }
+    return () => {
+      mounted = false;
+    };
+  }, [fetchAppointments]);
   const myTests = getTestsForCurrentUser ? getTestsForCurrentUser() : [];
   
   const [rescheduleModal, setRescheduleModal] = useState({ open: false, apptId: null, date: "", timeSlot: "", note: "" });
@@ -35,7 +53,8 @@ export default function CounselorDashboard() {
   const pendingAppointments = myAppointments.filter(a => a.status === 'pending');
   const pendingTests = myTests.filter(t => t.status === 'pending');
   const todayAppointments = myAppointments.filter(a => a.status === 'accepted' || a.status === 'rescheduled').length;
-  const reportsGenerated = 45; // placeholder
+  const completedCases = myTests.filter(t => t.status === 'accepted' || t.status === 'completed').length + myAppointments.filter(a => a.status === 'accepted' || a.status === 'completed').length;
+  const reportsGenerated = 0;
 
   const [rescheduleTestModal, setRescheduleTestModal] = useState({ open: false, testId: null, date: "", timeSlot: "", note: "" });
 
@@ -56,28 +75,43 @@ export default function CounselorDashboard() {
   ];
 
   // Handlers for appointment actions
-  const handleAccept = (id) => {
+  const handleAccept = async (id) => {
     const appt = myAppointments.find(a => a.id === id);
-    const slot = appt.timeSlot || (Array.isArray(appt.preferredSlots) ? appt.preferredSlots[0] : null);
-    acceptAppointment({ id, date: appt.preferredDate, timeSlot: slot, note: null });
+    const slot = appt.preferred_time || (appt.preferred_slots ? appt.preferred_slots.split(",")[0] : null);
+    const result = await acceptAppointment({ id, date: appt.preferred_date, timeSlot: slot, note: null });
+    if (result.success) {
+      setMyAppointments((prev) => prev.map((a) => a.id === id ? { ...a, status: "approved", scheduled_date: appt.preferred_date, scheduled_time: slot } : a));
+    } else {
+      alert(result.message || "Failed to accept appointment");
+    }
   };
 
-  const handleReject = (id) => {
+  const handleReject = async (id) => {
     const note = prompt("Optional note for rejection:") || null;
-    rejectAppointment({ id, note });
+    const result = await rejectAppointment({ id, note });
+    if (result.success) {
+      setMyAppointments((prev) => prev.map((a) => a.id === id ? { ...a, status: "rejected", counselor_action_note: note } : a));
+    } else {
+      alert(result.message || "Failed to reject appointment");
+    }
   };
 
   const openReschedule = (id) => {
     setRescheduleModal({ open: true, apptId: id, date: "", timeSlot: "", note: "" });
   };
 
-  const submitReschedule = () => {
+  const submitReschedule = async () => {
     if (!rescheduleModal.date || !rescheduleModal.timeSlot) {
       alert("Select date and time");
       return;
     }
-    rescheduleAppointment({ id: rescheduleModal.apptId, date: rescheduleModal.date, timeSlot: rescheduleModal.timeSlot, note: rescheduleModal.note });
-    setRescheduleModal({ open: false, apptId: null, date: "", timeSlot: "", note: "" });
+    const result = await rescheduleAppointment({ id: rescheduleModal.apptId, date: rescheduleModal.date, timeSlot: rescheduleModal.timeSlot, note: rescheduleModal.note });
+    if (result.success) {
+      setMyAppointments((prev) => prev.map((a) => a.id === rescheduleModal.apptId ? { ...a, status: "rescheduled", scheduled_date: rescheduleModal.date, scheduled_time: rescheduleModal.timeSlot, counselor_action_note: rescheduleModal.note } : a));
+      setRescheduleModal({ open: false, apptId: null, date: "", timeSlot: "", note: "" });
+    } else {
+      alert(result.message || "Failed to reschedule appointment");
+    }
   };
 
   const timeLabel = (slot) => {

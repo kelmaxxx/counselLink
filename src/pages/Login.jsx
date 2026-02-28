@@ -26,7 +26,8 @@ export default function Login() {
     college: COLLEGES[0],
     studentId: "",
     phone: "",
-    corImage: null
+    corImage: null,
+    corFile: null
   });
   
   const [corPreview, setCorPreview] = useState(null);
@@ -57,23 +58,23 @@ export default function Login() {
     // Convert to base64
     const reader = new FileReader();
     reader.onloadend = () => {
-      setSignupForm((p) => ({ ...p, corImage: reader.result }));
+      setSignupForm((p) => ({ ...p, corImage: reader.result, corFile: file }));
       setCorPreview(reader.result);
     };
     reader.readAsDataURL(file);
   };
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    const res = login({ identifier: loginForm.identifier, password: loginForm.password, role: selectedRole });
+    const res = await login({ identifier: loginForm.identifier, password: loginForm.password, role: selectedRole });
     if (!res.success) {
-      alert("Invalid credentials. Try demo accounts listed below.");
+      alert(res.message || "Invalid credentials.");
     } else {
       navigate("/", { replace: true });
     }
   };
 
-  const handleSignupSubmit = (e) => {
+  const handleSignupSubmit = async (e) => {
     e.preventDefault();
     
     if (signupForm.password !== signupForm.confirmPassword) {
@@ -97,7 +98,7 @@ export default function Login() {
       }
     }
 
-    const res = signup({
+    const res = await signup({
       name: signupForm.name,
       email: signupForm.email,
       password: signupForm.password,
@@ -105,7 +106,8 @@ export default function Login() {
       college: signupForm.college,
       studentId: signupForm.studentId,
       phone: signupForm.phone,
-      corImage: signupForm.corImage
+      corImage: signupForm.corImage,
+      corFile: signupForm.corFile
     });
     
     if (!res.success) {
