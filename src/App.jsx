@@ -7,6 +7,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import NotFound from "./pages/NotFound";
 
 // Student pages
 import RequestAppointment from "./pages/student/RequestAppointment";
@@ -261,6 +262,9 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Wildcard catch-all route */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );

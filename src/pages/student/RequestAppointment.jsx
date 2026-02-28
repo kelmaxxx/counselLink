@@ -20,7 +20,7 @@ export default function RequestAppointment() {
 
   const { createAppointment } = useAppointments?.() || {};
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!createAppointment) {
       alert("Appointment system not initialized.");
@@ -31,7 +31,7 @@ export default function RequestAppointment() {
       return;
     }
     setSubmitted(true);
-    const res = createAppointment({ student: myRecord, form });
+    const res = await createAppointment({ student: myRecord, form });
     if (res?.success) {
       alert("Appointment request submitted successfully!");
       setForm({ date: "", timeSlot: "", isUrgent: false, phoneNumber: "", reason: "" });

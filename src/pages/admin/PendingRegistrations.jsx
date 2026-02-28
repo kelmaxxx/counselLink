@@ -1,10 +1,11 @@
 // src/pages/admin/PendingRegistrations.jsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { CheckCircle, XCircle, Eye, Calendar, Mail, Phone, GraduationCap, User, Clock } from "lucide-react";
 
 export default function PendingRegistrations() {
-  const { users, currentUser, approveRegistration, rejectRegistration } = useAuth();
+  const { fetchPendingRegistrations, approveRegistration, rejectRegistration } = useAuth();
+  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:5000";
   
   const [selectedUser, setSelectedUser] = useState(null);
   const [showCorModal, setShowCorModal] = useState(false);
@@ -14,14 +15,27 @@ export default function PendingRegistrations() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [message, setMessage] = useState(null);
 
-  // Get pending student registrations
-  const pendingUsers = users.filter(u => u.role === "student" && u.status === "pending_approval");
-  const approvedToday = users.filter(u => 
-    u.role === "student" && 
-    u.status === "approved" && 
-    u.approvedAt && 
-    new Date(u.approvedAt).toDateString() === new Date().toDateString()
-  ).length;
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [approvedToday, setApprovedToday] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadPending = async () => {
+      try {
+        const data = await fetchPendingRegistrations();
+        if (mounted) {
+          setPendingUsers(data);
+          setApprovedToday(0);
+        }
+      } catch (err) {
+        setMessage({ type: "error", text: err.message || "Unable to load pending registrations" });
+      }
+    };
+    loadPending();
+    return () => {
+      mounted = false;
+    };
+  }, [fetchPendingRegistrations]);
 
   const programs = [
     "BS Computer Science",
@@ -50,17 +64,22 @@ export default function PendingRegistrations() {
 
   const yearLevels = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"];
 
-  const handleApprove = (user) => {
+  const handleApprove = async (user) => {
     if (!approvalForm.program || !approvalForm.yearLevel) {
       setMessage({ type: "error", text: "Please select program and year level" });
       return;
     }
 
-    approveRegistration(user.id, {
-      program: approvalForm.program,
-      yearLevel: approvalForm.yearLevel,
-      approvedBy: currentUser.id
-    });
+    try {
+      await approveRegistration(user.id, {
+        program: approvalForm.program,
+        yearLevel: approvalForm.yearLevel,
+      });
+      setPendingUsers((prev) => prev.filter((item) => item.id !== user.id));
+    } catch (err) {
+      setMessage({ type: "error", text: err.message || "Unable to approve registration" });
+      return;
+    }
 
     // Simulate email being sent
     setEmailPreviewData({
@@ -84,16 +103,21 @@ export default function PendingRegistrations() {
     setTimeout(() => setMessage(null), 5000);
   };
 
-  const handleReject = (user) => {
+  const handleReject = async (user) => {
     if (!rejectionReason.trim()) {
       setMessage({ type: "error", text: "Please provide a reason for rejection" });
       return;
     }
 
-    rejectRegistration(user.id, {
-      reason: rejectionReason,
-      rejectedBy: currentUser.id
-    });
+    try {
+      await rejectRegistration(user.id, {
+        reason: rejectionReason,
+      });
+      setPendingUsers((prev) => prev.filter((item) => item.id !== user.id));
+    } catch (err) {
+      setMessage({ type: "error", text: err.message || "Unable to reject registration" });
+      return;
+    }
 
     // Simulate email being sent
     setEmailPreviewData({
@@ -113,6 +137,12 @@ export default function PendingRegistrations() {
     setSelectedUser(null);
     setRejectionReason("");
     setTimeout(() => setMessage(null), 5000);
+  };
+
+  const buildCorUrl = (user) => {
+    if (!user?.corUrl) return null;
+    if (user.corUrl.startsWith("http")) return user.corUrl;
+    return `${apiBase}${user.corUrl}`;
   };
 
   const formatDate = (dateString) => {
@@ -223,11 +253,11 @@ export default function PendingRegistrations() {
                   {/* COR Preview */}
                   <div className="text-right">
                     <p className="text-xs text-gray-500 mb-2">Certificate of Registration</p>
-                    {user.corImage ? (
+                    {buildCorUrl(user) ? (
                       <div>
-                        {user.corImage.startsWith('data:image') ? (
+                        {buildCorUrl(user).match(/\.(png|jpg|jpeg)$/i) ? (
                           <img 
-                            src={user.corImage} 
+                            src={buildCorUrl(user)} 
                             alt="COR Preview" 
                             className="w-32 h-24 object-cover border border-gray-300 rounded-lg cursor-pointer hover:opacity-80 transition"
                             onClick={() => {
@@ -375,9 +405,9 @@ export default function PendingRegistrations() {
               </button>
             </div>
             <div className="p-6 overflow-auto max-h-[calc(90vh-80px)]">
-              {selectedUser.corImage?.startsWith('data:image') ? (
+              {buildCorUrl(selectedUser)?.match(/\.(png|jpg|jpeg)$/i) ? (
                 <img 
-                  src={selectedUser.corImage} 
+                  src={buildCorUrl(selectedUser)} 
                   alt="Certificate of Registration" 
                   className="w-full h-auto border border-gray-300 rounded-lg"
                 />
@@ -385,7 +415,7 @@ export default function PendingRegistrations() {
                 <div className="text-center p-12">
                   <p className="text-gray-600">PDF file - Cannot preview in browser</p>
                   <a
-                    href={selectedUser.corImage}
+                    href={buildCorUrl(selectedUser)}
                     download={`COR_${selectedUser.studentId}.pdf`}
                     className="mt-4 inline-block px-4 py-2 bg-maroon-600 text-white rounded-lg hover:bg-maroon-700"
                   >

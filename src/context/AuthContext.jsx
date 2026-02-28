@@ -1,232 +1,164 @@
 // src/context/AuthContext.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { MOCK_USERS } from "../data/mockData";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [users, setUsers] = useState(() => {
-    const s = localStorage.getItem("users");
-    return s ? JSON.parse(s) : MOCK_USERS;
-  });
   const [currentUser, setCurrentUser] = useState(() => {
     const s = localStorage.getItem("currentUser");
     return s ? JSON.parse(s) : null;
   });
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
+  const authFetch = (url, options = {}) =>
+    fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
 
   // login by identifier + password
   // For students: identifier is studentId (strict match)
   // For staff (admin, counselor, college_rep): identifier is email (case-insensitive)
-  const login = ({ identifier, password, role }) => {
-    const found = users.find((u) => {
-      const roleMatches = role ? u.role === role : true;
-      if (!roleMatches) return false;
-      if (u.role === "student") {
-        return u.studentId?.toString() === identifier?.toString() && u.password === password;
-      }
-      // staff by email
-      return (
-        u.email?.toLowerCase() === identifier?.toLowerCase() &&
-        u.password === password
-      );
-    });
+  const login = async ({ identifier, password, role }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${apiBase}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier, password, role }),
+      });
 
-    if (found) {
-      // Check if student account is approved
-      if (found.role === "student" && found.status === "pending_approval") {
-        return { 
-          success: false, 
-          message: "Your account is pending approval. Please wait for admin verification.",
-          status: "pending_approval"
-        };
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.message || "Login failed");
+        return { success: false, message: data.message || "Login failed", status: data.status };
       }
 
-      if (found.role === "student" && found.status === "rejected") {
-        return { 
-          success: false, 
-          message: "Your account was rejected. Reason: " + (found.rejectionReason || "Please contact admin."),
-          status: "rejected"
-        };
-      }
-
-      setCurrentUser(found);
-      localStorage.setItem("currentUser", JSON.stringify(found));
-      return { success: true, user: found };
-    } else {
-      return { success: false, message: "Invalid credentials" };
+      setCurrentUser(data.user);
+      setToken(data.token);
+      localStorage.setItem("currentUser", JSON.stringify(data.user));
+      localStorage.setItem("token", data.token);
+      return { success: true, user: data.user };
+    } catch (err) {
+      setError("Unable to connect to server");
+      return { success: false, message: "Unable to connect to server" };
+    } finally {
+      setLoading(false);
     }
   };
 
   // signup (adds to in-memory users, returns user) - FOR STUDENT: pending approval
-  const signup = ({ name, email, password, role = "student", college = null, studentId = null, phone = "", corImage = null }) => {
-    // Check for duplicate email
-    if (users.find((u) => u.email.toLowerCase() === email.toLowerCase())) {
-      return { success: false, message: "Email already in use" };
+  const signup = async ({ name, email, password, role = "student", college = null, studentId = null, phone = "", corFile }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      let corMeta = {};
+      if (corFile) {
+        const formData = new FormData();
+        formData.append("cor", corFile);
+        const uploadResponse = await fetch(`${apiBase}/api/uploads/cor`, {
+          method: "POST",
+          body: formData,
+        });
+        const uploadData = await uploadResponse.json();
+        if (!uploadResponse.ok) {
+          setError(uploadData.message || "COR upload failed");
+          return { success: false, message: uploadData.message || "COR upload failed" };
+        }
+        corMeta = {
+          corUrl: uploadData.corUrl,
+          corFileName: uploadData.corFileName,
+          corFileType: uploadData.corFileType,
+        };
+      }
+
+      const response = await fetch(`${apiBase}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password, college, studentId, phone, role, ...corMeta }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.message || "Registration failed");
+        return { success: false, message: data.message || "Registration failed" };
+      }
+      return { success: true, message: data.message };
+    } catch (err) {
+      setError("Unable to connect to server");
+      return { success: false, message: "Unable to connect to server" };
+    } finally {
+      setLoading(false);
     }
-
-    // Check for duplicate student ID (for students)
-    if (role === "student" && studentId && users.find((u) => u.studentId === studentId)) {
-      return { success: false, message: "Student ID already registered" };
-    }
-
-    // Validate MSU email for students
-    if (role === "student" && !email.toLowerCase().endsWith("@msu.edu.ph")) {
-      return { success: false, message: "Please use your MSU institutional email (@msu.edu.ph)" };
-    }
-
-    const newId = users.reduce((max, u) => Math.max(max, u.id || 0), 0) + 1;
-    const newUser = {
-      id: newId,
-      name,
-      email,
-      password,
-      role,
-      college: role === "student" || role === "college_rep" ? college : null,
-      studentId: role === "student" ? studentId : undefined,
-      phone: phone || "",
-      
-      // COR Verification fields (for students)
-      status: role === "student" ? "pending_approval" : "approved",
-      corImage: role === "student" ? corImage : null,
-      program: null,  // Admin will set after reviewing COR
-      yearLevel: null, // Admin will set after reviewing COR
-      
-      // Tracking
-      submittedAt: new Date().toISOString(),
-      approvedBy: null,
-      approvedAt: null,
-      rejectionReason: null,
-      canLogin: role !== "student", // Students can't login until approved
-      
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    setUsers((prev) => {
-      const next = [...prev, newUser];
-      localStorage.setItem("users", JSON.stringify(next));
-      return next;
-    });
-
-    // For students: don't log them in (pending approval)
-    // For other roles: log them in immediately
-    if (role !== "student") {
-      setCurrentUser(newUser);
-      localStorage.setItem("currentUser", JSON.stringify(newUser));
-    }
-
-    return { 
-      success: true, 
-      user: newUser,
-      message: role === "student" 
-        ? "Registration submitted! Please wait for admin approval (24-48 hours)." 
-        : "Account created successfully!"
-    };
-  };
-
-  // createUser: add user without changing currentUser (for admin create)
-  const createUser = ({ name, email, password = "pass123", role = "student", college = null, studentId = null, extra = {} }) => {
-    if (users.find((u) => u.email.toLowerCase() === email.toLowerCase())) {
-      return { success: false, message: "Email already in use" };
-    }
-    const newId = users.reduce((max, u) => Math.max(max, u.id || 0), 0) + 1;
-    const newUser = {
-      id: newId,
-      name,
-      email,
-      password,
-      role,
-      college: role === "student" || role === "college_rep" ? college : null,
-      studentId: role === "student" ? studentId : undefined,
-      ...extra
-    };
-    setUsers((prev) => {
-      const next = [...prev, newUser];
-      localStorage.setItem("users", JSON.stringify(next));
-      return next;
-    });
-    return { success: true, user: newUser };
   };
 
   const logout = () => {
     setCurrentUser(null);
+    setToken(null);
     localStorage.removeItem("currentUser");
+    localStorage.removeItem("token");
   };
 
-  // updateUser: update user profile
-  const updateUser = (userId, updates) => {
-    setUsers((prev) => {
-      const next = prev.map(u => u.id === userId ? { ...u, ...updates } : u);
-      localStorage.setItem("users", JSON.stringify(next));
-      return next;
-    });
-    
-    // If updating current user, update currentUser state too
-    if (currentUser?.id === userId) {
-      const updatedUser = { ...currentUser, ...updates };
-      setCurrentUser(updatedUser);
-      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+  const fetchPendingRegistrations = async () => {
+    const response = await authFetch(`${apiBase}/api/admin/pending-registrations`);
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || "Unable to load pending registrations");
     }
-    
-    return { success: true };
+    return response.json();
   };
 
-  // approveRegistration: admin approves student registration
-  const approveRegistration = (userId, { program, yearLevel, approvedBy }) => {
-    setUsers((prev) => {
-      const next = prev.map(u => {
-        if (u.id === userId) {
-          return {
-            ...u,
-            status: "approved",
-            program,
-            yearLevel,
-            approvedBy,
-            approvedAt: new Date().toISOString(),
-            canLogin: true,
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return u;
-      });
-      localStorage.setItem("users", JSON.stringify(next));
-      return next;
-    });
-    return { success: true };
+  const approveRegistration = async (userId, { program, yearLevel }) => {
+    const response = await authFetch(
+      `${apiBase}/api/admin/pending-registrations/${userId}/approve`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ program, yearLevel }),
+      }
+    );
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || "Unable to approve registration");
+    }
+    return response.json();
   };
 
-  // rejectRegistration: admin rejects student registration
-  const rejectRegistration = (userId, { reason, rejectedBy }) => {
-    setUsers((prev) => {
-      const next = prev.map(u => {
-        if (u.id === userId) {
-          return {
-            ...u,
-            status: "rejected",
-            rejectionReason: reason,
-            rejectedBy,
-            rejectedAt: new Date().toISOString(),
-            canLogin: false,
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return u;
-      });
-      localStorage.setItem("users", JSON.stringify(next));
-      return next;
-    });
-    return { success: true };
+  const rejectRegistration = async (userId, { reason }) => {
+    const response = await authFetch(
+      `${apiBase}/api/admin/pending-registrations/${userId}/reject`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ reason }),
+      }
+    );
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || "Unable to reject registration");
+    }
+    return response.json();
   };
 
   return (
     <AuthContext.Provider value={{ 
-      users, 
-      currentUser, 
-      login, 
-      signup, 
-      createUser, 
-      logout, 
-      updateUser,
+      users,
+      currentUser,
+      token,
+      loading,
+      error,
+      login,
+      signup,
+      logout,
+      setUsers,
+      fetchPendingRegistrations,
       approveRegistration,
       rejectRegistration
     }}>
