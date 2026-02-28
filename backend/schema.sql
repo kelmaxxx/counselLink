@@ -42,6 +42,17 @@ CREATE TABLE IF NOT EXISTS appointments (
   FOREIGN KEY (counselor_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS notifications (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  title VARCHAR(255),
+  message TEXT NOT NULL,
+  status ENUM('read','unread') DEFAULT 'unread',
+  link VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 CREATE TABLE IF NOT EXISTS announcements (
   id INT PRIMARY KEY AUTO_INCREMENT,
   admin_id INT NOT NULL,

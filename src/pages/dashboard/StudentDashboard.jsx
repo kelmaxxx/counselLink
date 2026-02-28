@@ -13,8 +13,26 @@ export default function StudentDashboard() {
   const { currentUser, users } = useAuth();
   const myRecord = users?.find((u) => u.email === currentUser?.email) || currentUser;
 
-  const { getAppointmentsForCurrentUser } = useAppointments?.() || {};
-  const myAppointments = getAppointmentsForCurrentUser ? getAppointmentsForCurrentUser() : [];
+  const { fetchAppointments } = useAppointments?.() || {};
+  const [myAppointments, setMyAppointments] = useState([]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    const loadAppointments = async () => {
+      try {
+        const data = await fetchAppointments();
+        if (mounted) setMyAppointments(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    if (fetchAppointments) {
+      loadAppointments();
+    }
+    return () => {
+      mounted = false;
+    };
+  }, [fetchAppointments]);
   
   const { getTestsForCurrentUser } = useTests?.() || {};
   const myTests = getTestsForCurrentUser ? getTestsForCurrentUser() : [];
@@ -27,21 +45,21 @@ export default function StudentDashboard() {
   const [expandedTestResult, setExpandedTestResult] = useState(null);
 
   // Compute upcoming, pending, etc.
-  const upcoming = myAppointments.filter(a => a.status === 'accepted' || a.status === 'rescheduled');
+  const upcoming = myAppointments.filter(a => a.status === 'approved' || a.status === 'rescheduled');
   const pending = myAppointments.filter(a => a.status === 'pending');
   
   const upcomingTests = myTests.filter(t => t.status === 'accepted' || t.status === 'rescheduled');
   const pendingTests = myTests.filter(t => t.status === 'pending');
 
   const upcomingCount = upcoming.length + upcomingTests.length;
-  const completedCount = myAppointments.filter(a => a.status === 'completed' || a.status === 'accepted').length;
+  const completedCount = myAppointments.filter(a => a.status === 'completed' || a.status === 'approved').length;
   const pendingCount = pending.length + pendingTests.length;
   const testResultsCount = myTestResults.length;
 
   // Determine next item (appointment or test, earliest accepted/rescheduled by scheduledDate)
   const sortByDateTime = (a, b) => {
-    const da = new Date(a.scheduledDate || a.preferredDate || 0).getTime();
-    const db = new Date(b.scheduledDate || b.preferredDate || 0).getTime();
+    const da = new Date(a.scheduled_date || a.preferred_date || 0).getTime();
+    const db = new Date(b.scheduled_date || b.preferred_date || 0).getTime();
     return da - db;
   };
   
@@ -56,14 +74,14 @@ export default function StudentDashboard() {
   
   const next = [...allUpcoming].sort(sortByDateTime)[0] || allPending[0] || null;
 
-  const counselorName = (next && next.type === 'appointment') ? (users?.find(u => u.id === next.counselorId)?.name || "") : "";
+  const counselorName = (next && next.type === 'appointment') ? (users?.find(u => u.id === next.counselor_id)?.name || "") : "";
   const nextAppt = next ? {
     title: next.type === 'test' ? `${next.testType} Request` : 'General Counseling Session',
     counselor: next.type === 'test' ? 'Counseling Office' : (counselorName || 'Assigned Counselor'),
-    counselorId: next.counselorId,
-    date: next.scheduledDate || next.preferredDate || 'TBD',
-    time: next.scheduledTimeSlot || next.timeSlot || (Array.isArray(next.preferredSlots) ? next.preferredSlots[0] : 'TBD'),
-    status: next.status === 'accepted' ? 'Confirmed' : (next.status === 'rescheduled' ? 'Rescheduled' : 'Pending'),
+    counselorId: next.counselor_id,
+    date: next.scheduled_date || next.preferred_date || 'TBD',
+    time: next.scheduled_time || (next.preferred_slots ? next.preferred_slots.split(",")[0] : 'TBD'),
+    status: next.status === 'approved' ? 'Confirmed' : (next.status === 'rescheduled' ? 'Rescheduled' : 'Pending'),
     type: next.type
   } : null;
 
@@ -141,6 +159,56 @@ export default function StudentDashboard() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Recent Appointments */}
+        <div className="bg-white rounded-xl shadow p-6 border border-gray-200 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Recent Appointments</h3>
+            <Link to="/student/appointments" className="text-maroon-600 hover:underline text-sm inline-flex items-center gap-1">
+              View all <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          {myAppointments.length === 0 ? (
+            <div className="text-center text-gray-500 py-6">
+              <p>No appointments yet.</p>
+              <Link to="/student/request-appointment" className="mt-2 inline-block text-maroon-600 hover:underline">
+                Request an appointment
+              </Link>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-2 px-3 font-semibold text-gray-700">Date</th>
+                    <th className="text-left py-2 px-3 font-semibold text-gray-700">Time</th>
+                    <th className="text-left py-2 px-3 font-semibold text-gray-700">Status</th>
+                    <th className="text-left py-2 px-3 font-semibold text-gray-700">Counselor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myAppointments.slice(0, 5).map((appt) => {
+                    const counselor = users?.find((u) => u.id === appt.counselor_id);
+                    const statusLabel = appt.status === "approved" ? "Confirmed" : appt.status;
+                    return (
+                      <tr key={appt.id} className="border-b border-gray-100">
+                        <td className="py-2 px-3 text-gray-700">{appt.scheduled_date || appt.preferred_date}</td>
+                        <td className="py-2 px-3 text-gray-700">{appt.scheduled_time || (appt.preferred_slots ? appt.preferred_slots.split(",")[0] : "—")}</td>
+                        <td className="py-2 px-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${appt.status === "approved" ? "bg-green-100 text-green-800" : appt.status === "rescheduled" ? "bg-yellow-100 text-yellow-800" : appt.status === "rejected" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"}`}>
+                            {statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-gray-700">{counselor?.name || "TBD"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Main two-column content */}

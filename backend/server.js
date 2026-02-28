@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import uploadsRoutes from "./routes/uploads.routes.js";
 import appointmentsRoutes from "./routes/appointments.routes.js";
+import notificationsRoutes from "./routes/notifications.routes.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -27,6 +28,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/uploads", uploadsRoutes);
 app.use("/api/appointments", appointmentsRoutes);
+app.use("/api/notifications", notificationsRoutes);
 
 const port = process.env.PORT || 5000;
 

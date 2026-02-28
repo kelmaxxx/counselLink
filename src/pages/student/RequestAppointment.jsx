@@ -270,7 +270,7 @@ export default function RequestAppointment() {
             <p>
               <strong>Confidentiality:</strong> All information shared during counseling sessions is confidential and protected under RA 10173 (Data Privacy Act of 2012).
             </p>
-            <p>
+            <div>
               <strong>Exceptions to Confidentiality:</strong>
               <ul className="list-disc list-inside ml-2 mt-2">
                 <li>Consultation within the counseling team for professional care</li>
@@ -278,7 +278,7 @@ export default function RequestAppointment() {
                 <li>Legal requirement to report abuse/neglect of minors</li>
                 <li>Court orders</li>
               </ul>
-            </p>
+            </div>
           </div>
         </div>
 

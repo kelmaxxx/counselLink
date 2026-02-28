@@ -1,65 +1,73 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
 
 const NotificationsContext = createContext();
 
 export function NotificationsProvider({ children }) {
-  const { currentUser } = useAuth();
-  const [notifications, setNotifications] = useState(() => {
-    const s = localStorage.getItem("notifications");
-    return s ? JSON.parse(s) : [];
-  });
+  const { currentUser, token } = useAuth();
+  const [notifications, setNotifications] = useState([]);
+  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
-  const addNotification = ({ recipientId, recipientRole = null, title, message, type = "info", link = null }) => {
-    const id = notifications.reduce((m, n) => Math.max(m, n.id || 0), 0) + 1;
-    const notif = {
-      id,
-      recipientId, // null = all users, specific ID = that user
-      recipientRole, // null = any role, specific role = that role only
-      title,
-      message,
-      type, // info, success, warning, error
-      link,
-      read: false,
-      createdAt: new Date().toISOString(),
+  useEffect(() => {
+    let mounted = true;
+    const loadNotifications = async () => {
+      if (!token) return;
+      try {
+        const response = await fetch(`${apiBase}/api/notifications`, {
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Unable to load notifications");
+        }
+        if (mounted) {
+          setNotifications(
+            data.map((n) => ({
+              id: n.id,
+              title: n.title,
+              message: n.message,
+              link: n.link,
+              read: n.status === "read",
+              createdAt: n.created_at,
+            }))
+          );
+        }
+      } catch (err) {
+        console.error(err);
+      }
     };
-    setNotifications(prev => {
-      const next = [notif, ...prev];
-      localStorage.setItem("notifications", JSON.stringify(next));
-      return next;
-    });
-    return notif;
-  };
+    loadNotifications();
+    return () => {
+      mounted = false;
+    };
+  }, [token, apiBase]);
 
-  const markAsRead = (id) => {
-    setNotifications(prev => {
-      const next = prev.map(n => n.id === id ? { ...n, read: true } : n);
-      localStorage.setItem("notifications", JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev => {
-      const next = prev.map(n => ({ ...n, read: true }));
-      localStorage.setItem("notifications", JSON.stringify(next));
-      return next;
+  const markAsRead = async (id) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    await fetch(`${apiBase}/api/notifications/${id}/read`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
   };
 
-  const getNotificationsForCurrentUser = () => {
-    if (!currentUser) return [];
-    return notifications.filter(n => {
-      // Check if notification is for this user specifically
-      if (n.recipientId !== null && n.recipientId !== currentUser.id) return false;
-      
-      // Check if notification is role-specific
-      if (n.recipientRole !== null && n.recipientRole !== currentUser.role) return false;
-      
-      // If recipientId is null and recipientRole is null, it's for everyone
-      return true;
+  const markAllAsRead = async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    await fetch(`${apiBase}/api/notifications/read-all`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
   };
+
+  const getNotificationsForCurrentUser = () => notifications;
 
   const getUnreadCount = () => {
     return getNotificationsForCurrentUser().filter(n => !n.read).length;
@@ -80,12 +88,10 @@ export function NotificationsProvider({ children }) {
   return (
     <NotificationsContext.Provider value={{
       notifications,
-      addNotification,
       markAsRead,
       markAllAsRead,
       getNotificationsForCurrentUser,
       getUnreadCount,
-      createAnnouncement,
     }}>
       {children}
     </NotificationsContext.Provider>
