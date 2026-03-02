@@ -1,28 +1,51 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { useAppointments } from "../../context/AppointmentsContext";
-import { useTests } from "../../context/TestsContext";
 
 export default function AdminReports() {
-  const { users } = useAuth();
-  const { appointments } = useAppointments();
-  const { tests } = useTests();
+  const { token } = useAuth();
+  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+  const [reportData, setReportData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const students = users?.filter((u) => u.role === "student") || [];
-  const counselors = users?.filter((u) => u.role === "counselor") || [];
-  const reps = users?.filter((u) => u.role === "college_rep") || [];
+  const fetchReport = async () => {
+    if (!token) return;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${apiBase}/api/reports/admin`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to load report");
+      }
+      setReportData(data);
+    } catch (err) {
+      setError(err.message || "Unable to load report");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Compute real stats
-  const totalAppointments = appointments.length;
-  const totalTests = tests.length;
-  const pendingRequests = appointments.filter(a => a.status === 'pending').length + 
-                          tests.filter(t => t.status === 'pending').length;
+  useEffect(() => {
+    fetchReport();
+  }, [token]);
 
-  // Appointment status breakdown
+  const students = reportData?.users?.student || 0;
+  const counselors = reportData?.users?.counselor || 0;
+  const reps = reportData?.users?.college_rep || 0;
+  const totalAppointments = reportData?.totals?.appointments || 0;
+  const totalTests = reportData?.totals?.tests || 0;
+  const pendingRequests = reportData?.totals?.pendingRequests || 0;
+
   const appointmentStatuses = {
-    pending: appointments.filter(a => a.status === 'pending').length,
-    accepted: appointments.filter(a => a.status === 'accepted').length,
-    rejected: appointments.filter(a => a.status === 'rejected').length,
+    pending: reportData?.appointmentStatuses?.pending || 0,
+    accepted: reportData?.appointmentStatuses?.accepted || reportData?.appointmentStatuses?.approved || 0,
+    rejected: reportData?.appointmentStatuses?.rejected || 0,
   };
 
   const handlePrint = () => {
@@ -30,8 +53,35 @@ export default function AdminReports() {
   };
 
   const handleViewDetails = () => {
-    alert('Detailed view coming soon');
+    if (!reportData) return;
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      ...reportData,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "admin-report.json";
+    link.click();
+    URL.revokeObjectURL(url);
   };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <p className="text-gray-600">Loading report...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">

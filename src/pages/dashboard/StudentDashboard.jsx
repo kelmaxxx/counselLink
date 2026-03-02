@@ -58,11 +58,11 @@ export default function StudentDashboard() {
 
   // Determine next item (appointment or test, earliest accepted/rescheduled by scheduledDate)
   const sortByDateTime = (a, b) => {
-    const da = new Date(a.scheduled_date || a.preferred_date || 0).getTime();
-    const db = new Date(b.scheduled_date || b.preferred_date || 0).getTime();
+    const da = new Date(a.scheduledDate || a.scheduled_date || a.preferredDate || a.preferred_date || 0).getTime();
+    const db = new Date(b.scheduledDate || b.scheduled_date || b.preferredDate || b.preferred_date || 0).getTime();
     return da - db;
   };
-  
+
   const allUpcoming = [
     ...upcoming.map(a => ({ ...a, type: 'appointment' })),
     ...upcomingTests.map(t => ({ ...t, type: 'test' }))
@@ -71,16 +71,18 @@ export default function StudentDashboard() {
     ...pending.map(a => ({ ...a, type: 'appointment' })),
     ...pendingTests.map(t => ({ ...t, type: 'test' }))
   ];
-  
+
   const next = [...allUpcoming].sort(sortByDateTime)[0] || allPending[0] || null;
 
-  const counselorName = (next && next.type === 'appointment') ? (users?.find(u => u.id === next.counselor_id)?.name || "") : "";
+  const counselorName = (next && next.type === 'appointment')
+    ? (next.counselorName || users?.find(u => u.id === next.counselor_id)?.name || "")
+    : "";
   const nextAppt = next ? {
     title: next.type === 'test' ? `${next.testType} Request` : 'General Counseling Session',
     counselor: next.type === 'test' ? 'Counseling Office' : (counselorName || 'Assigned Counselor'),
     counselorId: next.counselor_id,
-    date: next.scheduled_date || next.preferred_date || 'TBD',
-    time: next.scheduled_time || (next.preferred_slots ? next.preferred_slots.split(",")[0] : 'TBD'),
+    date: next.scheduledDate || next.scheduled_date || next.preferredDate || next.preferred_date || 'TBD',
+    time: next.scheduledTimeSlot || next.scheduled_time || (next.preferredSlots?.[0] || (next.preferred_slots ? next.preferred_slots.split(",")[0] : 'TBD')),
     status: next.status === 'approved' ? 'Confirmed' : (next.status === 'rescheduled' ? 'Rescheduled' : 'Pending'),
     type: next.type
   } : null;
@@ -194,8 +196,8 @@ export default function StudentDashboard() {
                     const statusLabel = appt.status === "approved" ? "Confirmed" : appt.status;
                     return (
                       <tr key={appt.id} className="border-b border-gray-100">
-                        <td className="py-2 px-3 text-gray-700">{appt.scheduled_date || appt.preferred_date}</td>
-                        <td className="py-2 px-3 text-gray-700">{appt.scheduled_time || (appt.preferred_slots ? appt.preferred_slots.split(",")[0] : "—")}</td>
+                        <td className="py-2 px-3 text-gray-700">{appt.scheduledDate || appt.preferredDate || "—"}</td>
+                        <td className="py-2 px-3 text-gray-700">{appt.scheduledTimeSlot || appt.preferredSlots?.[0] || "—"}</td>
                         <td className="py-2 px-3">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${appt.status === "approved" ? "bg-green-100 text-green-800" : appt.status === "rescheduled" ? "bg-yellow-100 text-yellow-800" : appt.status === "rejected" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"}`}>
                             {statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}

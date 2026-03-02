@@ -10,7 +10,7 @@ export default function CounselorReports() {
   const { createTestResult } = useTestResults();
 
   const myTests = getTestsForCurrentUser ? getTestsForCurrentUser() : [];
-  const completedTests = myTests.filter(t => t.status === 'accepted' || t.status === 'rescheduled');
+  const completedTests = myTests.filter(t => t.status === 'approved' || t.status === 'rescheduled' || t.status === 'accepted');
 
   const [sendResultModal, setSendResultModal] = useState({ open: false });
   const [resultForm, setResultForm] = useState({
@@ -32,7 +32,7 @@ export default function CounselorReports() {
     setSendResultModal({ open: true });
   };
 
-  const handleSendResult = (e) => {
+  const handleSendResult = async (e) => {
     e.preventDefault();
     const selectedTest = completedTests.find(t => t.id === Number(resultForm.testId));
     if (!selectedTest) {
@@ -40,21 +40,20 @@ export default function CounselorReports() {
       return;
     }
 
-    const res = createTestResult({
-      studentId: selectedTest.studentUserId,
+    const res = await createTestResult({
+      appointmentId: selectedTest.id,
+      studentId: selectedTest.student_id || selectedTest.studentUserId,
       testName: resultForm.testName,
       completedDate: resultForm.completedDate,
-      counselorName: currentUser?.name || "Counselor",
       summary: resultForm.summary,
       recommendations: resultForm.recommendations,
-      pdfUrl: null,
     });
 
     if (res.success) {
       alert("Test result sent successfully!");
       setSendResultModal({ open: false });
     } else {
-      alert("Failed to send test result");
+      alert(res.message || "Failed to send test result");
     }
   };
 

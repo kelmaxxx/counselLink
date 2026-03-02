@@ -1,36 +1,83 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { useAppointments } from "../../context/AppointmentsContext";
-import { useTests } from "../../context/TestsContext";
 
 export default function CounselingData() {
-  const { currentUser, users } = useAuth();
-  const { appointments } = useAppointments();
-  const { tests } = useTests();
+  const { currentUser, token } = useAuth();
+  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:5000";
   const [saveMessage, setSaveMessage] = useState("");
+  const [reportData, setReportData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const myCollege = currentUser?.college;
-  const studentsInCollege = users?.filter((u) => u.role === "student" && u.college === myCollege) || [];
+  const fetchReport = async () => {
+    if (!token) return;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${apiBase}/api/reports/college`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to load report");
+      }
+      setReportData(data);
+    } catch (err) {
+      setError(err.message || "Unable to load report");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Get appointments and tests for students in the college
-  const collegeAppointments = appointments.filter(a => a.college === myCollege);
-  const collegeTests = tests.filter(t => t.college === myCollege);
+  useEffect(() => {
+    fetchReport();
+  }, [token]);
 
-  // Compute stats
-  const totalSessions = collegeAppointments.length + collegeTests.length;
-  const activeCases = collegeAppointments.filter(a => a.status === 'pending' || a.status === 'accepted').length +
-                      collegeTests.filter(t => t.status === 'pending' || t.status === 'accepted').length;
-  const completed = collegeAppointments.filter(a => a.status === 'completed' || a.status === 'accepted').length +
-                    collegeTests.filter(t => t.status === 'completed' || t.status === 'accepted').length;
+  const myCollege = reportData?.college || currentUser?.college;
+  const studentsInCollege = reportData?.students || [];
+  const totalSessions = reportData?.totals?.totalSessions || 0;
+  const activeCases = reportData?.totals?.activeCases || 0;
+  const completed = reportData?.totals?.completed || 0;
 
   const handlePrint = () => {
     window.print();
   };
 
   const handleSave = () => {
+    if (!reportData) return;
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      ...reportData,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `college-report-${myCollege || "college"}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
     setSaveMessage("Report saved successfully!");
     setTimeout(() => setSaveMessage(""), 3000);
   };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <p className="text-gray-600">Loading report...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -91,9 +138,9 @@ export default function CounselingData() {
                 studentsInCollege.map((student) => (
                   <tr key={student.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm text-gray-900">{student.name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{student.studentId || "N/A"}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{student.studentId || student.student_id || "N/A"}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{student.program || "N/A"}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{student.yearLevel || "N/A"}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{student.yearLevel || student.year_level || "N/A"}</td>
                     <td className="px-6 py-4 text-sm">
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
                         Active

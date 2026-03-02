@@ -73,18 +73,6 @@ export function NotificationsProvider({ children }) {
     return getNotificationsForCurrentUser().filter(n => !n.read).length;
   };
 
-  // Broadcast announcement to all users
-  const createAnnouncement = ({ title, message, link = null }) => {
-    addNotification({
-      recipientId: null, // null = all users
-      title,
-      message,
-      type: "info",
-      link,
-    });
-    return { success: true };
-  };
-
   return (
     <NotificationsContext.Provider value={{
       notifications,

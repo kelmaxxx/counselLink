@@ -60,3 +60,29 @@ CREATE TABLE IF NOT EXISTS announcements (
   date_posted TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (admin_id) REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS test_results (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  appointment_id INT NULL,
+  student_id INT NOT NULL,
+  counselor_id INT NOT NULL,
+  test_name VARCHAR(120) NOT NULL,
+  completed_date DATE NOT NULL,
+  summary TEXT,
+  recommendations TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (appointment_id) REFERENCES appointments(id),
+  FOREIGN KEY (student_id) REFERENCES users(id),
+  FOREIGN KEY (counselor_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  sender_id INT NOT NULL,
+  recipient_id INT NOT NULL,
+  content TEXT NOT NULL,
+  status ENUM('read','unread') DEFAULT 'unread',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (sender_id) REFERENCES users(id),
+  FOREIGN KEY (recipient_id) REFERENCES users(id)
+);

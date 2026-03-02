@@ -45,7 +45,7 @@ export const listAppointmentsForUser = async (req, res) => {
       `SELECT a.*, u.name AS studentName, u.college, u.student_id AS studentId
        FROM appointments a
        JOIN users u ON a.student_id = u.id
-       WHERE a.counselor_id = ? OR a.counselor_id IS NULL
+       WHERE a.counselor_id IS NULL OR a.counselor_id = ?
        ORDER BY a.created_at DESC`,
       [userId]
     );

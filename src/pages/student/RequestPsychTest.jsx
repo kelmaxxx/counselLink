@@ -32,16 +32,18 @@ export default function RequestPsychTest() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.date || !(form.preferredSlots && form.preferredSlots.length) || !form.phoneNumber) {
       alert("Please provide date, at least one preferred time, and phone number.");
       return;
     }
-    const res = createTestRequest({ student: myRecord, form });
+    const res = await createTestRequest({ student: myRecord, form });
     if (res.success) {
       alert("Psychological test request submitted.");
       setForm({ testType: "Psychological Test", date: "", preferredSlots: [], phoneNumber: "", reason: "" });
+    } else {
+      alert(res.message || "Failed to submit test request");
     }
   };
 

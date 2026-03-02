@@ -1,81 +1,78 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
-import { useNotifications } from "./NotificationsContext";
 
 const MessagesContext = createContext();
 
 export function MessagesProvider({ children }) {
-  const { currentUser } = useAuth();
-  const { addNotification } = useNotifications();
-  
-  const [messages, setMessages] = useState(() => {
-    const s = localStorage.getItem("messages");
-    return s ? JSON.parse(s) : [];
+  const { currentUser, token } = useAuth();
+  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
+  const [messages, setMessages] = useState([]);
+  const [conversations, setConversations] = useState([]);
+
+  const normalizeMessage = (msg) => ({
+    ...msg,
+    senderId: msg.sender_id || msg.senderId,
+    recipientId: msg.recipient_id || msg.recipientId,
+    timestamp: msg.created_at || msg.timestamp,
+    read: msg.status === "read" || msg.read,
   });
 
-  const [conversations, setConversations] = useState(() => {
-    const s = localStorage.getItem("conversations");
-    return s ? JSON.parse(s) : [];
-  });
+  const fetchConversations = async () => {
+    if (!token) return [];
+    const response = await fetch(`${apiBase}/api/messages/conversations`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Unable to load conversations");
+    }
+    const normalized = Array.isArray(data) ? data.map(normalizeMessage) : [];
+    setConversations(normalized);
+    return normalized;
+  };
+
+  const fetchConversation = async (userId) => {
+    if (!token || !userId) return [];
+    const response = await fetch(`${apiBase}/api/messages/conversations/${userId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Unable to load conversation");
+    }
+    const normalized = Array.isArray(data) ? data.map(normalizeMessage) : [];
+    setMessages(normalized);
+    return normalized;
+  };
 
   // Send a message
-  const sendMessage = ({ recipientId, content }) => {
+  const sendMessage = async ({ recipientId, content }) => {
     if (!currentUser || !recipientId || !content.trim()) {
       return { success: false, message: "Invalid message data" };
     }
 
-    const messageId = messages.reduce((m, msg) => Math.max(m, msg.id || 0), 0) + 1;
-    const newMessage = {
-      id: messageId,
-      senderId: currentUser.id,
-      recipientId,
-      content: content.trim(),
-      timestamp: new Date().toISOString(),
-      read: false,
-    };
-
-    setMessages((prev) => {
-      const next = [...prev, newMessage];
-      localStorage.setItem("messages", JSON.stringify(next));
-      return next;
+    const response = await fetch(`${apiBase}/api/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ recipientId, content }),
     });
-
-    // Update or create conversation
-    const conversationKey = [currentUser.id, recipientId].sort().join("-");
-    setConversations((prev) => {
-      const existing = prev.find((c) => c.id === conversationKey);
-      let next;
-      if (existing) {
-        next = prev.map((c) =>
-          c.id === conversationKey
-            ? { ...c, lastMessage: content.trim(), lastMessageTime: new Date().toISOString() }
-            : c
-        );
-      } else {
-        next = [
-          ...prev,
-          {
-            id: conversationKey,
-            participants: [currentUser.id, recipientId],
-            lastMessage: content.trim(),
-            lastMessageTime: new Date().toISOString(),
-          },
-        ];
-      }
-      localStorage.setItem("conversations", JSON.stringify(next));
-      return next;
-    });
-
-    // Send notification to recipient
-    addNotification({
-      recipientId,
-      title: "New Message",
-      message: `${currentUser.name} sent you a message`,
-      type: "info",
-      link: null,
-    });
-
-    return { success: true, message: newMessage };
+    const data = await response.json();
+    if (!response.ok) {
+      return { success: false, message: data.message || "Unable to send message" };
+    }
+    await fetchConversation(recipientId);
+    await fetchConversations();
+    return { success: true };
   };
 
   // Get messages between current user and another user
@@ -94,20 +91,22 @@ export function MessagesProvider({ children }) {
   const getConversationsForCurrentUser = () => {
     if (!currentUser) return [];
     return conversations
-      .filter((c) => c.participants.includes(currentUser.id))
-      .sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+      .filter((m) => m.senderId === currentUser.id || m.recipientId === currentUser.id)
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   };
 
   // Mark messages as read
-  const markAsRead = (userId) => {
+  const markAsRead = async (userId) => {
     if (!currentUser || !userId) return;
-    setMessages((prev) => {
-      const next = prev.map((m) =>
-        m.senderId === userId && m.recipientId === currentUser.id ? { ...m, read: true } : m
-      );
-      localStorage.setItem("messages", JSON.stringify(next));
-      return next;
+    await fetch(`${apiBase}/api/messages/conversations/${userId}/read`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
+    await fetchConversation(userId);
+    await fetchConversations();
   };
 
   // Get unread count for a specific user
@@ -122,6 +121,10 @@ export function MessagesProvider({ children }) {
     return messages.filter((m) => m.recipientId === currentUser.id && !m.read).length;
   };
 
+  useEffect(() => {
+    fetchConversations().catch(() => undefined);
+  }, [token]);
+
   return (
     <MessagesContext.Provider
       value={{
@@ -133,6 +136,8 @@ export function MessagesProvider({ children }) {
         markAsRead,
         getUnreadCount,
         getTotalUnreadCount,
+        fetchConversation,
+        fetchConversations,
       }}
     >
       {children}
