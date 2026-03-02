@@ -1,9 +1,6 @@
 // src/pages/Reports.jsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { useAppointments } from "../../context/AppointmentsContext";
-import { useTests } from "../../context/TestsContext";
-import { useTestResults } from "../../context/TestResultsContext";
 import { BarChart2, Users, Calendar, FileText, TrendingUp, Download } from "lucide-react";
 
 function StatCard({ icon: Icon, label, count, color }) {
@@ -38,45 +35,70 @@ function StatusBadge({ status }) {
 }
 
 export default function Reports() {
-  const { currentUser, users } = useAuth();
-  const { getAppointmentsForCurrentUser } = useAppointments();
-  const { getTestsForCurrentUser } = useTests();
-  const { getTestResultsForCurrentUser } = useTestResults();
+  const { currentUser, token } = useAuth();
+  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+  const [reportData, setReportData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const appointments = getAppointmentsForCurrentUser();
-  const tests = getTestsForCurrentUser();
-  const testResults = getTestResultsForCurrentUser();
+  const fetchReport = async () => {
+    if (!token) return;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${apiBase}/api/reports/overview`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Unable to load report");
+      }
+      setReportData(data);
+    } catch (err) {
+      setError(err.message || "Unable to load report");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Compute statistics
-  const totalAppointments = appointments.length;
-  const completedAppointments = appointments.filter(
-    (a) => a.status === "completed" || a.status === "accepted"
-  ).length;
-  const pendingAppointments = appointments.filter((a) => a.status === "pending").length;
-  const totalTests = tests.length;
-  const completedTests = tests.filter((t) => t.status === "accepted" || t.status === "completed").length;
-  const totalResults = testResults.length;
-
-  // College distribution (for counselors/admins)
-  const collegeDistribution =
-    currentUser?.role !== "student"
-      ? users
-          .filter((u) => u.role === "student")
-          .reduce((acc, student) => {
-            const college = student.college || "Unassigned";
-            acc[college] = (acc[college] || 0) + 1;
-            return acc;
-          }, {})
-      : {};
-
-  // Recent activity (last 5 appointments)
-  const recentActivity = appointments
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 5);
+  useEffect(() => {
+    fetchReport();
+  }, [token]);
 
   const handleExport = () => {
-    alert("Export feature coming soon!");
+    if (!reportData) return;
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      role: currentUser?.role,
+      ...reportData,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `reports-${currentUser?.role || "user"}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <p className="text-gray-600">Loading report...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -84,7 +106,8 @@ export default function Reports() {
         <h1 className="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
         <button
           onClick={handleExport}
-          className="bg-maroon-500 text-white px-4 py-2 rounded-lg hover:bg-maroon-600 transition font-medium flex items-center gap-2"
+          disabled={!reportData}
+          className="bg-maroon-500 text-white px-4 py-2 rounded-lg hover:bg-maroon-600 transition font-medium flex items-center gap-2 disabled:opacity-60"
         >
           <Download className="w-4 h-4" />
           Export
@@ -96,50 +119,50 @@ export default function Reports() {
         <StatCard
           icon={Calendar}
           label="Total Appointments"
-          count={totalAppointments}
+          count={reportData?.totals?.appointments || 0}
           color="bg-maroon-500"
         />
         <StatCard
           icon={TrendingUp}
           label="Completed Appointments"
-          count={completedAppointments}
+          count={reportData?.totals?.completedAppointments || 0}
           color="bg-green-500"
         />
         <StatCard
           icon={Calendar}
           label="Pending Appointments"
-          count={pendingAppointments}
+          count={reportData?.totals?.pendingAppointments || 0}
           color="bg-yellow-500"
         />
         <StatCard
           icon={FileText}
           label="Total Test Requests"
-          count={totalTests}
+          count={reportData?.totals?.tests || 0}
           color="bg-blue-500"
         />
         <StatCard
           icon={BarChart2}
           label="Completed Tests"
-          count={completedTests}
+          count={reportData?.totals?.completedTests || 0}
           color="bg-purple-500"
         />
         <StatCard
           icon={FileText}
           label="Test Results"
-          count={totalResults}
+          count={reportData?.totals?.results || 0}
           color="bg-indigo-500"
         />
       </div>
 
       {/* College Distribution (for non-students) */}
-      {currentUser?.role !== "student" && Object.keys(collegeDistribution).length > 0 && (
+      {currentUser?.role !== "student" && reportData?.collegeDistribution && Object.keys(reportData.collegeDistribution).length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl shadow p-6 mb-8">
           <div className="flex items-center gap-2 mb-6">
             <Users className="w-5 h-5 text-maroon-500" />
             <h2 className="text-2xl font-semibold text-gray-900">Student Distribution by College</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {Object.entries(collegeDistribution).map(([college, count]) => (
+            {Object.entries(reportData.collegeDistribution).map(([college, count]) => (
               <div key={college} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <span className="font-medium text-gray-700">{college}</span>
                 <span className="bg-maroon-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
@@ -152,14 +175,14 @@ export default function Reports() {
       )}
 
       {/* Recent Activity */}
-      {recentActivity.length > 0 && (
+      {(reportData?.recentActivity || []).length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl shadow p-6">
           <div className="flex items-center gap-2 mb-6">
             <Calendar className="w-5 h-5 text-maroon-500" />
             <h2 className="text-2xl font-semibold text-gray-900">Recent Activity</h2>
           </div>
           <div className="space-y-4">
-            {recentActivity.map((apt) => (
+            {(reportData?.recentActivity || []).map((apt) => (
               <div
                 key={apt.id}
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-maroon-300 transition"
@@ -176,7 +199,7 @@ export default function Reports() {
       )}
 
       {/* Empty State */}
-      {recentActivity.length === 0 && (
+      {(reportData?.recentActivity || []).length === 0 && (
         <div className="bg-white border border-gray-200 rounded-xl shadow p-12 text-center">
           <BarChart2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-600 text-lg mb-2">No data available</p>

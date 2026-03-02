@@ -13,10 +13,7 @@ export function setNotificationCallback(callback) {
 export function AppointmentsProvider({ children }) {
   const { users = [], currentUser, token } = useAuth();
   const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:5000";
-  const [appointments, setAppointments] = useState(() => {
-    const s = localStorage.getItem("appointments");
-    return s ? JSON.parse(s) : [];
-  });
+  const [appointments, setAppointments] = useState([]);
 
   const counselors = useMemo(() => (users || []).filter(u => u.role === "counselor"), [users]);
 
@@ -52,12 +49,23 @@ export function AppointmentsProvider({ children }) {
     return { success: true, appointment: data };
   };
 
+  const normalizeAppointment = (apt) => ({
+    ...apt,
+    preferredDate: apt.preferred_date || apt.preferredDate || null,
+    preferredSlots:
+      apt.preferred_slots?.split(",").filter(Boolean) ||
+      apt.preferredSlots ||
+      [],
+    scheduledDate: apt.scheduled_date || apt.scheduledDate || null,
+    scheduledTimeSlot: apt.scheduled_time || apt.scheduledTimeSlot || null,
+    counselorName: apt.counselorName || apt.counselor_name || null,
+    studentName: apt.studentName || apt.student_name || null,
+    controlNo: apt.controlNo || `APT-${String(apt.id).padStart(6, "0")}`,
+    note: apt.counselor_action_note || apt.note || null,
+  });
+
   const updateAppointment = (id, updater) => {
-    setAppointments(prev => {
-      const next = prev.map(a => a.id === id ? { ...a, ...updater, updatedAt: new Date().toISOString() } : a);
-      localStorage.setItem("appointments", JSON.stringify(next));
-      return next;
-    });
+    setAppointments(prev => prev.map(a => a.id === id ? { ...a, ...updater } : a));
   };
 
   const fetchAppointments = async () => {
@@ -71,7 +79,9 @@ export function AppointmentsProvider({ children }) {
     if (!response.ok) {
       throw new Error(data.message || "Unable to load appointments");
     }
-    return data;
+    const normalized = Array.isArray(data) ? data.map(normalizeAppointment) : [];
+    setAppointments(normalized);
+    return normalized;
   };
 
   const acceptAppointment = async ({ id, date = null, timeSlot = null, note = null }) => {
@@ -87,6 +97,7 @@ export function AppointmentsProvider({ children }) {
     if (!response.ok) {
       return { success: false, message: data.message || "Unable to accept appointment" };
     }
+    await fetchAppointments();
     return { success: true };
   };
 
@@ -103,6 +114,7 @@ export function AppointmentsProvider({ children }) {
     if (!response.ok) {
       return { success: false, message: data.message || "Unable to reschedule appointment" };
     }
+    await fetchAppointments();
     return { success: true };
   };
 
@@ -119,6 +131,7 @@ export function AppointmentsProvider({ children }) {
     if (!response.ok) {
       return { success: false, message: data.message || "Unable to reject appointment" };
     }
+    await fetchAppointments();
     return { success: true };
   };
 

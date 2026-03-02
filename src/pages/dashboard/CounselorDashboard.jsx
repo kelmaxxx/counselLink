@@ -77,10 +77,12 @@ export default function CounselorDashboard() {
   // Handlers for appointment actions
   const handleAccept = async (id) => {
     const appt = myAppointments.find(a => a.id === id);
-    const slot = appt.preferred_time || (appt.preferred_slots ? appt.preferred_slots.split(",")[0] : null);
-    const result = await acceptAppointment({ id, date: appt.preferred_date, timeSlot: slot, note: null });
+    const slot = appt.preferredTime || appt.preferred_time || appt.preferredSlots?.[0] || (appt.preferred_slots ? appt.preferred_slots.split(",")[0] : null);
+    const result = await acceptAppointment({ id, date: appt.preferredDate || appt.preferred_date, timeSlot: slot, note: null });
     if (result.success) {
-      setMyAppointments((prev) => prev.map((a) => a.id === id ? { ...a, status: "approved", scheduled_date: appt.preferred_date, scheduled_time: slot } : a));
+      setMyAppointments((prev) => prev.map((a) => a.id === id
+        ? { ...a, status: "accepted", scheduledDate: appt.preferredDate || appt.preferred_date, scheduledTimeSlot: slot }
+        : a));
     } else {
       alert(result.message || "Failed to accept appointment");
     }
@@ -107,7 +109,9 @@ export default function CounselorDashboard() {
     }
     const result = await rescheduleAppointment({ id: rescheduleModal.apptId, date: rescheduleModal.date, timeSlot: rescheduleModal.timeSlot, note: rescheduleModal.note });
     if (result.success) {
-      setMyAppointments((prev) => prev.map((a) => a.id === rescheduleModal.apptId ? { ...a, status: "rescheduled", scheduled_date: rescheduleModal.date, scheduled_time: rescheduleModal.timeSlot, counselor_action_note: rescheduleModal.note } : a));
+      setMyAppointments((prev) => prev.map((a) => a.id === rescheduleModal.apptId
+        ? { ...a, status: "rescheduled", scheduledDate: rescheduleModal.date, scheduledTimeSlot: rescheduleModal.timeSlot, note: rescheduleModal.note }
+        : a));
       setRescheduleModal({ open: false, apptId: null, date: "", timeSlot: "", note: "" });
     } else {
       alert(result.message || "Failed to reschedule appointment");
@@ -127,27 +131,37 @@ export default function CounselorDashboard() {
   };
 
   // Test handlers
-  const handleAcceptTest = (id) => {
+  const handleAcceptTest = async (id) => {
     const test = myTests.find(t => t.id === id);
     const slot = Array.isArray(test.preferredSlots) ? test.preferredSlots[0] : null;
-    acceptTest({ id, date: test.preferredDate, timeSlot: slot, note: null });
+    const result = await acceptTest({ id, date: test.preferredDate, timeSlot: slot, note: null });
+    if (!result?.success) {
+      alert(result?.message || "Failed to accept test request");
+    }
   };
 
-  const handleRejectTest = (id) => {
+  const handleRejectTest = async (id) => {
     const note = prompt("Optional note for rejection:") || null;
-    rejectTest({ id, note });
+    const result = await rejectTest({ id, note });
+    if (!result?.success) {
+      alert(result?.message || "Failed to reject test request");
+    }
   };
 
   const openRescheduleTest = (id) => {
     setRescheduleTestModal({ open: true, testId: id, date: "", timeSlot: "", note: "" });
   };
 
-  const submitRescheduleTest = () => {
+  const submitRescheduleTest = async () => {
     if (!rescheduleTestModal.date || !rescheduleTestModal.timeSlot) {
       alert("Select date and time");
       return;
     }
-    rescheduleTest({ id: rescheduleTestModal.testId, date: rescheduleTestModal.date, timeSlot: rescheduleTestModal.timeSlot, note: rescheduleTestModal.note });
+    const result = await rescheduleTest({ id: rescheduleTestModal.testId, date: rescheduleTestModal.date, timeSlot: rescheduleTestModal.timeSlot, note: rescheduleTestModal.note });
+    if (!result?.success) {
+      alert(result?.message || "Failed to reschedule test request");
+      return;
+    }
     setRescheduleTestModal({ open: false, testId: null, date: "", timeSlot: "", note: "" });
   };
 
@@ -265,7 +279,7 @@ export default function CounselorDashboard() {
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{appt.studentName}</p>
                           <p className="text-sm text-gray-600">{appt.college || 'N/A'} • General Counseling</p>
-                          <p className="text-xs text-gray-500 mt-1">{appt.preferredDate} at {Array.isArray(appt.preferredSlots) ? appt.preferredSlots[0] : appt.timeSlot}</p>
+                          <p className="text-xs text-gray-500 mt-1">{appt.preferredDate} at {Array.isArray(appt.preferredSlots) ? appt.preferredSlots[0] : appt.timeSlot || "—"}</p>
                         </div>
                       </div>
                       
@@ -326,7 +340,7 @@ export default function CounselorDashboard() {
             ) : (
               <div className="space-y-3">
                 {pendingTests.slice(0, 3).map((test) => {
-                  const student = users?.find(u => u.id === test.studentUserId);
+                  const student = users?.find(u => u.id === (test.student_id || test.studentUserId));
                   return (
                     <div key={test.id} className="p-4 rounded-lg border border-blue-200 bg-blue-50">
                       <div className="flex items-start gap-3 mb-3">

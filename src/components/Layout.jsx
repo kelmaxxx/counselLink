@@ -4,16 +4,11 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { useNotificationIntegration } from "../hooks/useNotificationIntegration";
-
 export default function Layout({ children }) {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState("dashboard");
   
-  // Initialize notification callbacks
-  useNotificationIntegration();
-
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });

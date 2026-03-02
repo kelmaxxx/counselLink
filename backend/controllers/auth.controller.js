@@ -60,16 +60,66 @@ export const registerStudent = async (req, res) => {
     return res.status(400).json({ message: "Missing required fields" });
   }
 
-  if (!email.toLowerCase().endsWith("@msu.edu.ph")) {
-    return res.status(400).json({ message: "Please use your MSU email" });
+  const emailLower = email.toLowerCase();
+  const allowedDomains = ["@msu.edu.ph", "@s.msumain.edu.ph", "@msumain.edu.ph"];
+  if (!allowedDomains.some((domain) => emailLower.endsWith(domain))) {
+    return res.status(400).json({ message: "Please use your MSU institutional email (e.g., name@s.msumain.edu.ph)" });
   }
 
-  const existing = await query("SELECT id FROM users WHERE email = ? OR student_id = ?", [
+  const existing = await query("SELECT * FROM users WHERE email = ? OR student_id = ?", [
     email,
     studentId,
   ]);
+
   if (existing.length) {
-    return res.status(409).json({ message: "Email or student ID already in use" });
+    const nonRejected = existing.find((user) => user.status !== "rejected");
+    if (nonRejected) {
+      return res.status(409).json({ message: "Email or student ID already in use" });
+    }
+
+    const nonStudent = existing.find((user) => user.role !== "student");
+    if (nonStudent) {
+      return res.status(409).json({ message: "Email or student ID already in use" });
+    }
+
+    const uniqueIds = [...new Set(existing.map((user) => user.id))];
+    if (uniqueIds.length > 1) {
+      return res.status(409).json({ message: "Email or student ID already in use" });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+    await query(
+      `UPDATE users
+       SET name = ?,
+           email = ?,
+           password = ?,
+           status = 'pending_approval',
+           college = ?,
+           student_id = ?,
+           phone = ?,
+           cor_url = ?,
+           cor_file_name = ?,
+           cor_file_type = ?,
+           rejection_reason = NULL
+       WHERE id = ?`,
+      [
+        name,
+        email,
+        hashed,
+        college,
+        studentId,
+        phone || null,
+        corUrl || null,
+        corFileName || null,
+        corFileType || null,
+        uniqueIds[0],
+      ]
+    );
+
+    return res.status(200).json({
+      message: "Registration resubmitted. Please wait for approval.",
+      id: uniqueIds[0],
+    });
   }
 
   const hashed = await bcrypt.hash(password, 10);

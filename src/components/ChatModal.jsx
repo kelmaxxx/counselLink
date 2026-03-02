@@ -5,34 +5,48 @@ import { useAuth } from "../context/AuthContext";
 
 export default function ChatModal({ recipientUser, onClose }) {
   const { currentUser } = useAuth();
-  const { getConversation, sendMessage, markAsRead } = useMessages();
+  const { getConversation, sendMessage, markAsRead, fetchConversation } = useMessages();
   const [message, setMessage] = useState("");
   const [conversation, setConversation] = useState([]);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    if (recipientUser) {
-      const conv = getConversation(recipientUser.id);
-      setConversation(conv);
-      markAsRead(recipientUser.id);
-    }
-  }, [recipientUser, getConversation, markAsRead]);
+    let mounted = true;
+    const loadConversation = async () => {
+      if (!recipientUser) return;
+      try {
+        await fetchConversation(recipientUser.id);
+        const conv = getConversation(recipientUser.id);
+        if (mounted) setConversation(conv);
+        await markAsRead(recipientUser.id);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    loadConversation();
+    return () => {
+      mounted = false;
+    };
+  }, [recipientUser, fetchConversation, getConversation, markAsRead]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [conversation]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!message.trim() || !recipientUser) return;
 
-    const result = sendMessage({
+    const result = await sendMessage({
       recipientId: recipientUser.id,
       content: message,
     });
 
     if (result.success) {
-      setConversation((prev) => [...prev, result.message]);
+      const conv = getConversation(recipientUser.id);
+      setConversation(conv);
       setMessage("");
+    } else {
+      alert(result.message || "Failed to send message");
     }
   };
 

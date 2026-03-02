@@ -150,9 +150,11 @@ export default function Appointments() {
                 {appointments.map((apt) => (
                   <tr key={apt.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
                     <td className="py-3 px-4 text-gray-900 font-medium">{apt.controlNo}</td>
-                    <td className="py-3 px-4 text-gray-700">{apt.studentName}</td>
-                    <td className="py-3 px-4 text-gray-700">{apt.preferred_date || apt.preferredDate}</td>
-                    <td className="py-3 px-4 text-gray-700">{apt.scheduled_date || "—"}</td>
+                    <td className="py-3 px-4 text-gray-700">
+                      {currentUser?.role === "student" ? apt.counselorName || "TBD" : apt.studentName}
+                    </td>
+                    <td className="py-3 px-4 text-gray-700">{apt.preferredDate || "—"}</td>
+                    <td className="py-3 px-4 text-gray-700">{apt.scheduledDate || "—"}</td>
                     <td className="py-3 px-4">
                       <StatusBadge status={apt.status} />
                     </td>
