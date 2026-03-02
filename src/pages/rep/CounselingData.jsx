@@ -1,13 +1,34 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { useAppointments } from "../../context/AppointmentsContext";
+
+const STATUS_OPTIONS = [
+  { value: "all", label: "All Statuses" },
+  { value: "pending", label: "Pending" },
+  { value: "accepted", label: "Accepted" },
+  { value: "approved", label: "Approved" },
+  { value: "rescheduled", label: "Rescheduled" },
+  { value: "rejected", label: "Rejected" },
+  { value: "completed", label: "Completed" },
+];
+
+const normalizeDateValue = (value) => {
+  if (!value) return "";
+  if (typeof value === "string" && value.includes("T")) {
+    return value.split("T")[0];
+  }
+  return value;
+};
 
 export default function CounselingData() {
   const { currentUser, token } = useAuth();
+  const { appointments, fetchAppointments } = useAppointments();
   const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:5000";
   const [saveMessage, setSaveMessage] = useState("");
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [filters, setFilters] = useState({ status: "all", dateFrom: "", dateTo: "", search: "" });
 
   const fetchReport = async () => {
     if (!token) return;
@@ -25,6 +46,7 @@ export default function CounselingData() {
         throw new Error(data.message || "Unable to load report");
       }
       setReportData(data);
+      await fetchAppointments();
     } catch (err) {
       setError(err.message || "Unable to load report");
     } finally {
@@ -36,11 +58,58 @@ export default function CounselingData() {
     fetchReport();
   }, [token]);
 
+  const updateFilter = (field) => (event) => {
+    setFilters((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const clearFilters = () => {
+    setFilters({ status: "all", dateFrom: "", dateTo: "", search: "" });
+  };
+
   const myCollege = reportData?.college || currentUser?.college;
   const studentsInCollege = reportData?.students || [];
-  const totalSessions = reportData?.totals?.totalSessions || 0;
-  const activeCases = reportData?.totals?.activeCases || 0;
-  const completed = reportData?.totals?.completed || 0;
+
+  const collegeAppointments = useMemo(() => {
+    if (!myCollege) return [];
+    return (appointments || []).filter((apt) => {
+      if (!apt.college || apt.college !== myCollege) {
+        return false;
+      }
+      return true;
+    });
+  }, [appointments, myCollege]);
+
+  const filteredAppointments = useMemo(() => {
+    return collegeAppointments.filter((apt) => {
+      if (filters.status !== "all" && apt.status !== filters.status) {
+        return false;
+      }
+      if (filters.search) {
+        const searchValue = filters.search.toLowerCase();
+        const name = `${apt.studentName || ""} ${apt.studentId || ""}`.toLowerCase();
+        if (!name.includes(searchValue)) {
+          return false;
+        }
+      }
+      if (filters.dateFrom || filters.dateTo) {
+        const dateValue =
+          normalizeDateValue(apt.preferredDate) ||
+          normalizeDateValue(apt.scheduledDate) ||
+          normalizeDateValue(apt.created_at);
+        if (!dateValue) return false;
+        const date = new Date(dateValue);
+        if (filters.dateFrom && date < new Date(filters.dateFrom)) return false;
+        if (filters.dateTo && date > new Date(filters.dateTo)) return false;
+      }
+      return true;
+    });
+  }, [collegeAppointments, filters]);
+
+  const totalSessions = filteredAppointments.length;
+  const activeCases = filteredAppointments.filter((apt) =>
+    ["pending", "accepted", "approved"].includes(apt.status)
+  ).length;
+  const completed = filteredAppointments.filter((apt) => apt.status === "completed").length;
 
   const handlePrint = () => {
     window.print();
@@ -50,7 +119,10 @@ export default function CounselingData() {
     if (!reportData) return;
     const payload = {
       generatedAt: new Date().toISOString(),
-      ...reportData,
+      filters,
+      college: myCollege,
+      totals: { totalSessions, activeCases, completed },
+      students: studentsInCollege,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -89,6 +161,61 @@ export default function CounselingData() {
         </div>
       )}
 
+      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select
+              className="w-full border rounded px-3 py-2"
+              value={filters.status}
+              onChange={updateFilter("status")}
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+            <input
+              type="date"
+              className="w-full border rounded px-3 py-2"
+              value={filters.dateFrom}
+              onChange={updateFilter("dateFrom")}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date To</label>
+            <input
+              type="date"
+              className="w-full border rounded px-3 py-2"
+              value={filters.dateTo}
+              onChange={updateFilter("dateTo")}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Student Search</label>
+            <input
+              type="text"
+              className="w-full border rounded px-3 py-2"
+              placeholder="Name or ID"
+              value={filters.search}
+              onChange={updateFilter("search")}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end mt-4">
+          <button
+            onClick={clearFilters}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50"
+          >
+            Clear Filters
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-maroon-500 text-white p-6 rounded-xl shadow">
           <h3 className="text-sm font-medium text-maroon-100">Total Sessions</h3>
@@ -106,13 +233,21 @@ export default function CounselingData() {
 
       <div className="bg-white border border-gray-200 p-6 rounded-xl shadow mb-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Summary Statistics - {myCollege}</h3>
-        <p className="text-gray-600 mb-6">This is aggregated data available for your college. For detailed individual student records, submit a request below.</p>
-        
+        <p className="text-gray-600 mb-6">
+          This is aggregated data available for your college. For detailed individual student records, submit a request below.
+        </p>
+
         <div className="flex gap-4 mb-6">
-          <button onClick={handlePrint} className="px-4 py-2 bg-maroon-500 text-white rounded-lg hover:bg-maroon-600 transition">
+          <button
+            onClick={handlePrint}
+            className="px-4 py-2 bg-maroon-500 text-white rounded-lg hover:bg-maroon-600 transition"
+          >
             Print Report
           </button>
-          <button onClick={handleSave} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+          >
             Save Report
           </button>
         </div>
@@ -138,7 +273,9 @@ export default function CounselingData() {
                 studentsInCollege.map((student) => (
                   <tr key={student.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm text-gray-900">{student.name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{student.studentId || student.student_id || "N/A"}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {student.studentId || student.student_id || "N/A"}
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{student.program || "N/A"}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{student.yearLevel || student.year_level || "N/A"}</td>
                     <td className="px-6 py-4 text-sm">

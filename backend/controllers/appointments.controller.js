@@ -40,20 +40,8 @@ export const listAppointmentsForUser = async (req, res) => {
     return res.json(rows);
   }
 
-  if (role === "counselor") {
-    const rows = await query(
-      `SELECT a.*, u.name AS studentName, u.college, u.student_id AS studentId
-       FROM appointments a
-       JOIN users u ON a.student_id = u.id
-       WHERE a.counselor_id IS NULL OR a.counselor_id = ?
-       ORDER BY a.created_at DESC`,
-      [userId]
-    );
-    return res.json(rows);
-  }
-
   const rows = await query(
-    `SELECT a.*, s.name AS studentName, c.name AS counselorName
+    `SELECT a.*, s.name AS studentName, s.college, s.student_id AS studentId, c.name AS counselorName
      FROM appointments a
      LEFT JOIN users s ON a.student_id = s.id
      LEFT JOIN users c ON a.counselor_id = c.id
