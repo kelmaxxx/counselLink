@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   Calendar, Users, FileText, Bell, LogOut, User,
-  ClipboardList, BarChart3, Settings, BookOpen, AlertCircle, UserCheck, Shield, MessageCircle
+  ClipboardList, BarChart3, Settings, BookOpen, AlertCircle, UserCheck, Shield, MessageCircle, FileSignature
 } from "lucide-react";
 import { useMessages } from "../context/MessagesContext";
 
@@ -24,6 +24,7 @@ const idToPath = {
   dashboard: "/",
   "request-appointment": "/student/request-appointment",
   "request-psych-test": "/student/request-psych-test",
+  consent: "/student/consent",
   profile: "/student/profile",
   notifications: "/student/notifications",
   
@@ -55,6 +56,7 @@ const idToPath = {
           { id: "dashboard", label: "Dashboard", icon: BarChart3 },
           { id: "request-appointment", label: "Request Appointment", icon: Calendar },
           { id: "request-psych-test", label: "Request Psych Test", icon: ClipboardList },
+          { id: "consent", label: "Informed Consent", icon: FileSignature },
           { id: "messages", label: "Messages", icon: MessageCircle },
           { id: "profile", label: "My Profile", icon: User },
           { id: "notifications", label: "Notifications", icon: Bell }

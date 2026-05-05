@@ -9,6 +9,7 @@ import { NotificationsProvider } from './context/NotificationsContext'
 import { TestResultsProvider } from './context/TestResultsContext'
 import { MessagesProvider } from './context/MessagesContext'
 import { CounselingSessionsProvider } from './context/CounselingSessionsContext'
+import { StudentRecordsProvider } from './context/StudentRecordsContext'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -19,7 +20,9 @@ createRoot(document.getElementById('root')).render(
             <TestResultsProvider>
               <MessagesProvider>
                 <CounselingSessionsProvider>
-                  <App />
+                  <StudentRecordsProvider>
+                    <App />
+                  </StudentRecordsProvider>
                 </CounselingSessionsProvider>
               </MessagesProvider>
             </TestResultsProvider>
