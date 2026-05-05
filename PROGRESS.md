@@ -18,7 +18,11 @@ Track milestones from the approved plan. Tick boxes as you finish.
   - [x] Wired StudentProfile / CounselorProfile / RepProfile / AdminProfile (async + saving state)
   - [x] Fixed `ManageUsers.jsx` create/edit/delete to use real API (removed localStorage path)
   - [ ] **MANUAL VERIFY (user):** run migration → edit profile → log out → log back in → change persisted; admin creates/edits/deletes user
-- [ ] **1.3 Counselor data scoping fix** in `appointments.controller.js`
+- [x] **1.3 Counselor + rep data scoping fix** (2026-05-05)
+  - [x] `appointments.controller.js` — counselor sees own + unassigned; rep sees own college only
+  - [x] `tests.controller.js` — added rep college filter (counselor scoping was already correct)
+  - [x] `test-results.controller.js` — counselor sees own results only; rep sees own college
+  - [ ] **MANUAL VERIFY (user):** counselor only sees assigned/unassigned; rep only sees own college's data
 
 ## Week 2 — PDF-spec features
 - [ ] **2.1 Audit logs** — `audit_logs` table, `utils/audit.js`, admin viewer page
