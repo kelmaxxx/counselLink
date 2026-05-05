@@ -62,7 +62,7 @@ const idToPath = {
       case "counselor":
         return [
           { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-          { id: "manage-students", label: "Manage Students", icon: Users },
+          { id: "manage-students", label: "Manage Students Records", icon: Users },
           { id: "appointments", label: "Appointments", icon: Calendar },
           { id: "messages", label: "Messages", icon: MessageCircle },
           { id: "generate-reports", label: "Generate Reports", icon: FileText },

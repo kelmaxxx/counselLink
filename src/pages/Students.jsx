@@ -168,7 +168,7 @@ export default function ManageStudents() {
     <div className="p-6">
       <div className="max-w-full">
         <div className="mb-6">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-1">Manage Students</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-1">Manage Students Records</h2>
           <p className="text-sm text-gray-600">Archive of counseling session records — add, edit, or delete each session.</p>
         </div>
 
@@ -359,7 +359,7 @@ export default function ManageStudents() {
 
       {/* Add / Edit Modal */}
       {editing !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 my-8">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">{editing.id ? "Edit Session Record" : "Add Session Record"}</h3>
