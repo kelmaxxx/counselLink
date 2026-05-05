@@ -90,3 +90,19 @@ CREATE TABLE IF NOT EXISTS messages (
   FOREIGN KEY (sender_id) REFERENCES users(id),
   FOREIGN KEY (recipient_id) REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  actor_id INT NULL,
+  actor_role VARCHAR(30),
+  action VARCHAR(80) NOT NULL,
+  target_type VARCHAR(40),
+  target_id INT NULL,
+  details JSON,
+  ip_address VARCHAR(45),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_audit_action (action),
+  INDEX idx_audit_actor (actor_id),
+  INDEX idx_audit_created (created_at)
+);

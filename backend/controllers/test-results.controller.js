@@ -1,4 +1,5 @@
 import { query } from "../config/db.js";
+import { logAction } from "../utils/audit.js";
 
 export const createTestResult = async (req, res) => {
   const { appointmentId, studentId, testName, completedDate, summary, recommendations } = req.body;
@@ -8,14 +9,20 @@ export const createTestResult = async (req, res) => {
     return res.status(400).json({ message: "Missing required result fields" });
   }
 
-  await query(
+  const result = await query(
     `INSERT INTO test_results
       (appointment_id, student_id, counselor_id, test_name, completed_date, summary, recommendations)
      VALUES (?, ?, ?, ?, ?, ?, ?)` ,
     [appointmentId || null, studentId, counselorId, testName, completedDate, summary || null, recommendations || null]
   );
 
-  return res.status(201).json({ message: "Test result saved" });
+  await logAction(req, "upload_test_result", "test_result", result.insertId, {
+    studentId,
+    testName,
+    appointmentId: appointmentId || null,
+  });
+
+  return res.status(201).json({ message: "Test result saved", id: result.insertId });
 };
 
 export const listTestResultsForUser = async (req, res) => {

@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { query } from "../config/db.js";
+import { logAction } from "../utils/audit.js";
 
 const SELECT_FIELDS = `
   id, name, email, role, status, college, student_id AS studentId, phone,
@@ -110,6 +111,7 @@ export const adminCreateUser = async (req, res) => {
     "INSERT INTO users (name, email, password, role, status, college) VALUES (?, ?, ?, ?, 'approved', ?)",
     [name, email, hashed, role, college || null]
   );
+  await logAction(req, "create_user", "user", result.insertId, { name, email, role, college: college || null });
   const rows = await query(`SELECT ${SELECT_FIELDS} FROM users WHERE id = ?`, [result.insertId]);
   return res.status(201).json(rows[0]);
 };
@@ -130,6 +132,7 @@ export const adminUpdateUser = async (req, res) => {
     `UPDATE users SET ${built.updates.join(", ")}, updated_at = NOW() WHERE id = ?`,
     built.params
   );
+  await logAction(req, "update_user", "user", id, { changedFields: Object.keys(req.body) });
   const rows = await query(`SELECT ${SELECT_FIELDS} FROM users WHERE id = ?`, [id]);
   if (!rows.length) return res.status(404).json({ message: "User not found" });
   return res.json(rows[0]);
@@ -141,8 +144,14 @@ export const adminDeleteUser = async (req, res) => {
     return res.status(400).json({ message: "You cannot delete your own account" });
   }
 
-  const target = await query("SELECT id FROM users WHERE id = ?", [id]);
+  const target = await query("SELECT id, name, email, role FROM users WHERE id = ?", [id]);
   if (!target.length) return res.status(404).json({ message: "User not found" });
+
+  await logAction(req, "delete_user", "user", id, {
+    name: target[0].name,
+    email: target[0].email,
+    role: target[0].role,
+  });
 
   await query("DELETE FROM notifications WHERE user_id = ?", [id]);
   await query("DELETE FROM messages WHERE sender_id = ? OR recipient_id = ?", [id, id]);

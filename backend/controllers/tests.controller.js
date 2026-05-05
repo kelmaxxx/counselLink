@@ -1,4 +1,5 @@
 import { query } from "../config/db.js";
+import { logAction } from "../utils/audit.js";
 
 const createNotification = async ({ userId, title, message, link }) => {
   await query(
@@ -117,6 +118,8 @@ export const acceptTest = async (req, res) => {
     [counselorId, normalizedDate, timeSlot, note || null, id]
   );
 
+  await logAction(req, "accept_test", "appointment", id, { date: normalizedDate, timeSlot });
+
   const rows = await query("SELECT student_id FROM appointments WHERE id = ?", [id]);
   if (rows.length) {
     await createNotification({
@@ -139,6 +142,8 @@ export const rejectTest = async (req, res) => {
     "UPDATE appointments SET status='rejected', counselor_id=?, counselor_action_note=?, updated_at=NOW() WHERE id=?",
     [counselorId, note || null, id]
   );
+
+  await logAction(req, "reject_test", "appointment", id, { note: note || null });
 
   const rows = await query("SELECT student_id FROM appointments WHERE id = ?", [id]);
   if (rows.length) {
@@ -168,6 +173,8 @@ export const rescheduleTest = async (req, res) => {
     "UPDATE appointments SET status='rescheduled', counselor_id=?, scheduled_date=?, scheduled_time=?, counselor_action_note=?, updated_at=NOW() WHERE id=?",
     [counselorId, normalizedDate, timeSlot, note || null, id]
   );
+
+  await logAction(req, "reschedule_test", "appointment", id, { date: normalizedDate, timeSlot });
 
   const rows = await query("SELECT student_id FROM appointments WHERE id = ?", [id]);
   if (rows.length) {

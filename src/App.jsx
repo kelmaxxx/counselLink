@@ -36,6 +36,7 @@ import AdminReports from "./pages/admin/AdminReports";
 import AdminProfile from "./pages/admin/AdminProfile";
 import AdminNotifications from "./pages/admin/AdminNotifications";
 import PendingRegistrations from "./pages/admin/PendingRegistrations";
+import AuditLogs from "./pages/admin/AuditLogs";
 
 export default function App() {
   return (
@@ -258,6 +259,16 @@ export default function App() {
             <ProtectedRoute>
               <Layout>
                 <AdminNotifications />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/audit-logs"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <AuditLogs />
               </Layout>
             </ProtectedRoute>
           }

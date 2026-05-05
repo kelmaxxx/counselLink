@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   Calendar, Users, FileText, Bell, LogOut, User,
-  ClipboardList, BarChart3, Settings, BookOpen, AlertCircle, UserCheck
+  ClipboardList, BarChart3, Settings, BookOpen, AlertCircle, UserCheck, Shield
 } from "lucide-react";
 
 function Sidebar({ currentUser: propUser, activeView, setActiveView, handleLogout }) {
@@ -38,6 +38,7 @@ const idToPath = {
   "manage-users": "/admin/manage-users",
   announcements: "/admin/announcements",
   reports: "/admin/reports",
+  "audit-logs": "/admin/audit-logs",
 };
 
   const getNavItems = () => {
@@ -75,6 +76,7 @@ const idToPath = {
           { id: "manage-users", label: "Manage User Accounts", icon: Settings },
           { id: "announcements", label: "Create Announcement", icon: AlertCircle },
           { id: "reports", label: "System Reports", icon: FileText },
+          { id: "audit-logs", label: "Audit Logs", icon: Shield },
           { id: "profile", label: "My Profile", icon: User },
           { id: "notifications", label: "Notifications", icon: Bell }
         ];

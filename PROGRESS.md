@@ -25,7 +25,15 @@ Track milestones from the approved plan. Tick boxes as you finish.
   - [ ] **MANUAL VERIFY (user):** counselor only sees assigned/unassigned; rep only sees own college's data
 
 ## Week 2 — PDF-spec features
-- [ ] **2.1 Audit logs** — `audit_logs` table, `utils/audit.js`, admin viewer page
+- [x] **2.1 Audit logs end-to-end** (2026-05-05)
+  - [x] `audit_logs` table — schema.sql + migration `002_audit_logs.sql`
+  - [x] `backend/utils/audit.js` — `logAction(req, action, targetType, targetId, details)`
+  - [x] Hooked into: admin approve/reject, user create/update/delete, announcement create, test result upload, appointment accept/reject/reschedule, test accept/reject/reschedule
+  - [x] `GET /api/audit-logs` (admin only) with pagination + filter by action/role
+  - [x] `GET /api/audit-logs/actions` for dropdown options
+  - [x] Frontend `AuditLogs.jsx` page with table, filters, pagination, expandable details
+  - [x] Sidebar link + route `/admin/audit-logs`
+  - [ ] **MANUAL VERIFY (user):** run migration 002 → perform admin actions → open Audit Logs page → entries appear
 - [ ] **2.2 Counseling session form persistence** — new `counseling_sessions` table + API
 
 ## Week 3 — Hardening
