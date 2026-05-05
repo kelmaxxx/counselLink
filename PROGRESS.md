@@ -44,6 +44,11 @@ Track milestones from the approved plan. Tick boxes as you finish.
   - [x] `StudentCounselingForm.jsx` now persists via API (loads existing record by appointmentId or creates new)
   - [x] `/api/users?role=student` accessible to counselors (for the student picker)
   - [ ] **MANUAL VERIFY (user):** run migration 003 → counselor adds/edits/deletes session record on Manage Students page; counselor opens an appointment's "Open Counseling Form", saves → reopens → data still there
+- [x] **2.3 Student records archive (inventory + consent)** (2026-05-06)
+  - [x] **Phase A** — modal scroll fix + sidebar rename to "Manage Students Records"
+  - [x] **Phase B (backend)** — `student_inventories` + `student_consents` tables (migration `004_student_records.sql`); controllers + routes; `recordScanUpload` multer middleware; audit hooks for `upsert_inventory`, `upload_inventory_scan`, `delete_inventory_scan`, `record_consent`, `upload_consent_scan`, `delete_consent_scan`, `revoke_consent`
+  - [x] **Phase C (frontend)** — `StudentRecordsContext` with all CRUD + scan helpers; new `Students` tab on Manage Students Records with completeness badges (Inventory / Consent / sessions); per-student drawer with three sub-tabs (Inventory, Consent, Sessions); inventory digital form matching the MSU DSA paper form exactly (Personal / Educational / Family / Health / Test Record / Other Information / Acknowledgment); scan upload + replace + remove for both inventory and consent; counselor revoke-consent flow; student-facing `/student/consent` e-sign page with verbatim consent text; "Informed Consent" sidebar link for students
+  - [ ] **MANUAL VERIFY (user):** run migration 004 → counselor opens Manage Students Records → Students tab → click a student → drawer shows three sub-tabs; fill Inventory, Save, reopen → data persists; upload inventory scan → Replace works → Remove works; on Consent sub-tab, upload signed paper scan → student row badge flips to "Paper"; as that student → /student/consent → tick agreement, type name, submit → counselor sees badge flip to "E-signed"; counselor revokes consent → badge becomes "Revoked"; student re-signs → resets
 
 ## Week 3 — Hardening
 - [ ] Backend try/catch + global error middleware

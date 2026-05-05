@@ -1,12 +1,17 @@
 // src/pages/Students.jsx
-// Counselor "Manage Students" — archive of counseling session records.
+// Counselor "Manage Students Records" — three tabs:
+//   Students        : per-student records with completeness badges (Inventory / Consent / sessions)
+//   Session Records : flat archive of all counseling sessions (existing)
+//   Overview        : analytics (existing)
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Search, Plus, Edit, Trash2, Users, FileText, Download, Calendar,
-  TrendingUp, Activity, X, AlertCircle
+  TrendingUp, Activity, X, AlertCircle, ClipboardList, FileSignature, BookOpen, RefreshCw
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCounselingSessions } from "../context/CounselingSessionsContext";
+import { useStudentRecords } from "../context/StudentRecordsContext";
+import StudentRecordsDrawer from "../components/records/StudentRecordsDrawer";
 
 const NEXT_LABELS = { followup: "Follow-up", termination: "Termination" };
 
@@ -45,16 +50,24 @@ function downloadCSV(rows, filename = "session-records.csv") {
 export default function ManageStudents() {
   const { currentUser, fetchUsersByRole } = useAuth();
   const { sessions, fetchSessions, createSession, updateSession, deleteSession } = useCounselingSessions();
+  const { getRecords } = useStudentRecords();
 
   const [students, setStudents] = useState([]);
-  const [activeTab, setActiveTab] = useState("records");
+  const [activeTab, setActiveTab] = useState("students");
   const [search, setSearch] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
   const [studentFilter, setStudentFilter] = useState("all");
   const [editing, setEditing] = useState(null); // null | {} | session row
   const [form, setForm] = useState(blankForm());
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+
+  // Drawer state
+  const [drawerStudent, setDrawerStudent] = useState(null);
+  // Per-student records cache: { [studentId]: { inventory, consent, loaded: bool } }
+  const [recordsByStudent, setRecordsByStudent] = useState({});
+  const [loadingRecords, setLoadingRecords] = useState(false);
 
   useEffect(() => {
     if (currentUser?.role === "counselor" || currentUser?.role === "admin") {
@@ -63,6 +76,39 @@ export default function ManageStudents() {
     fetchSessions().catch((err) => console.error(err));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.role]);
+
+  // Fan out and fetch each student's inventory + consent so completeness
+  // badges have data. Best-effort — failures fall back to "—".
+  const refreshAllRecords = async (list = students) => {
+    if (!list?.length) return;
+    setLoadingRecords(true);
+    const next = { ...recordsByStudent };
+    await Promise.all(
+      list.map(async (s) => {
+        try {
+          const r = await getRecords(s.id);
+          next[s.id] = { ...r, loaded: true };
+        } catch {
+          next[s.id] = { inventory: null, consent: null, loaded: true };
+        }
+      })
+    );
+    setRecordsByStudent(next);
+    setLoadingRecords(false);
+  };
+
+  // Auto-load records the first time the Students tab becomes active (and the
+  // student list has resolved) so the badges aren't blank on landing.
+  useEffect(() => {
+    if (activeTab === "students" && students.length > 0 && Object.keys(recordsByStudent).length === 0) {
+      refreshAllRecords(students);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, students.length]);
+
+  const handleRecordsChanged = (studentId, { inventory, consent }) => {
+    setRecordsByStudent((prev) => ({ ...prev, [studentId]: { inventory, consent, loaded: true } }));
+  };
 
   const studentsById = useMemo(() => {
     const map = {};
@@ -175,6 +221,12 @@ export default function ManageStudents() {
         {/* Tabs */}
         <div className="flex gap-2 border-b border-gray-200 mb-6">
           <button
+            onClick={() => setActiveTab("students")}
+            className={`px-4 py-2 font-medium transition ${activeTab === "students" ? "text-maroon-600 border-b-2 border-maroon-600" : "text-gray-600 hover:text-gray-900"}`}
+          >
+            <div className="flex items-center gap-2"><Users size={18} /> Students</div>
+          </button>
+          <button
             onClick={() => setActiveTab("records")}
             className={`px-4 py-2 font-medium transition ${activeTab === "records" ? "text-maroon-600 border-b-2 border-maroon-600" : "text-gray-600 hover:text-gray-900"}`}
           >
@@ -192,6 +244,116 @@ export default function ManageStudents() {
           <div className={`mb-4 p-3 rounded-lg border ${feedback.type === "success" ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
             {feedback.text}
           </div>
+        )}
+
+        {activeTab === "students" && (
+          <>
+            <div className="flex flex-col sm:flex-row gap-3 justify-between items-start mb-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  className="pl-10 pr-3 py-2 w-full border rounded-lg focus:outline-none focus:ring-2 focus:ring-maroon-500"
+                  placeholder="Search by name, ID, or college..."
+                  value={studentSearch}
+                  onChange={(e) => setStudentSearch(e.target.value)}
+                />
+              </div>
+              <button
+                onClick={() => refreshAllRecords(students)}
+                disabled={loadingRecords}
+                className="flex items-center gap-2 px-3 py-2 rounded border hover:bg-gray-50 disabled:opacity-50"
+              >
+                <RefreshCw size={14} className={loadingRecords ? "animate-spin" : ""} /> Refresh records
+              </button>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl shadow overflow-x-auto">
+              <table className="min-w-full divide-y">
+                <thead className="bg-gray-50">
+                  <tr className="text-left text-xs text-gray-700">
+                    <th className="px-4 py-3 font-medium">Student</th>
+                    <th className="px-4 py-3 font-medium">College / ID</th>
+                    <th className="px-4 py-3 font-medium">Inventory</th>
+                    <th className="px-4 py-3 font-medium">Consent</th>
+                    <th className="px-4 py-3 font-medium">Sessions</th>
+                    <th className="px-4 py-3 font-medium text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y text-sm">
+                  {(() => {
+                    const q = studentSearch.trim().toLowerCase();
+                    const list = students.filter((s) => {
+                      if (!q) return true;
+                      return (
+                        (s.name || "").toLowerCase().includes(q) ||
+                        (s.studentId || "").toLowerCase().includes(q) ||
+                        (s.college || "").toLowerCase().includes(q) ||
+                        (s.email || "").toLowerCase().includes(q)
+                      );
+                    });
+
+                    if (list.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                            {students.length === 0 ? "No students yet." : "No students match your search."}
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return list.map((s) => {
+                      const rec = recordsByStudent[s.id];
+                      const inv = rec?.inventory;
+                      const con = rec?.consent;
+                      const sessionCount = sessions.filter((x) => x.studentId === s.id).length;
+                      const invBadge = !rec?.loaded
+                        ? <span className="text-xs text-gray-400">—</span>
+                        : inv
+                          ? <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">On file{inv.scanUrl ? " + scan" : ""}</span>
+                          : <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Missing</span>;
+                      let conBadge;
+                      if (!rec?.loaded) {
+                        conBadge = <span className="text-xs text-gray-400">—</span>;
+                      } else if (!con) {
+                        conBadge = <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Awaiting</span>;
+                      } else if (con.revokedAt) {
+                        conBadge = <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-800">Revoked</span>;
+                      } else if (con.eConsentSignedAt) {
+                        conBadge = <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">E-signed</span>;
+                      } else if (con.scanUrl) {
+                        conBadge = <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Paper</span>;
+                      } else {
+                        conBadge = <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Awaiting</span>;
+                      }
+                      return (
+                        <tr key={s.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setDrawerStudent(s)}>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-gray-900">{s.name}</div>
+                            <div className="text-xs text-gray-500">{s.email}</div>
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">
+                            <div>{s.college || "—"}</div>
+                            <div className="text-xs text-gray-500">{s.studentId || "—"}</div>
+                          </td>
+                          <td className="px-4 py-3">{invBadge}</td>
+                          <td className="px-4 py-3">{conBadge}</td>
+                          <td className="px-4 py-3 text-gray-700">{sessionCount}</td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDrawerStudent(s); }}
+                              className="px-3 py-1.5 rounded border text-xs hover:bg-gray-50"
+                            >
+                              Open records
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         {activeTab === "overview" && (
@@ -481,6 +643,15 @@ export default function ManageStudents() {
             </form>
           </div>
         </div>
+      )}
+
+      {drawerStudent && (
+        <StudentRecordsDrawer
+          student={drawerStudent}
+          onClose={() => setDrawerStudent(null)}
+          onRecordsChanged={handleRecordsChanged}
+          readOnly={currentUser?.role !== "counselor"}
+        />
       )}
 
       {/* Delete confirm */}
