@@ -30,7 +30,7 @@ const SELF_UPDATABLE = {
 };
 
 const ADMIN_UPDATABLE = [
-  "name", "email", "phone", "bio", "college", "program", "yearLevel",
+  "name", "email", "phone", "bio", "college",
   "department", "specialization", "employeeId",
 ];
 
