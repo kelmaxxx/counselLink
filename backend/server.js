@@ -18,6 +18,7 @@ import counselingSessionsRoutes from "./routes/counseling-sessions.routes.js";
 import studentInventoriesRoutes from "./routes/student-inventories.routes.js";
 import studentConsentsRoutes from "./routes/student-consents.routes.js";
 import feedbackRoutes from "./routes/feedback.routes.js";
+import referralsRoutes from "./routes/referrals.routes.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -51,6 +52,7 @@ app.use("/api/counseling-sessions", counselingSessionsRoutes);
 app.use("/api/student-inventories", studentInventoriesRoutes);
 app.use("/api/student-consents", studentConsentsRoutes);
 app.use("/api/feedback", feedbackRoutes);
+app.use("/api/referrals", referralsRoutes);
 
 const port = process.env.PORT || 5000;
 

@@ -24,6 +24,8 @@ import StudentCounselingForm from "./pages/counselor/StudentCounselingForm";
 import CounselorReports from "./pages/counselor/CounselorReports";
 import CounselorProfile from "./pages/counselor/CounselorProfile";
 import CounselorNotifications from "./pages/counselor/CounselorNotifications";
+import CounselorReferrals from "./pages/counselor/CounselorReferrals";
+import ReferralConfirmation from "./pages/counselor/ReferralConfirmation";
 
 // College Rep pages
 import CounselingData from "./pages/rep/CounselingData";
@@ -179,6 +181,26 @@ export default function App() {
             <ProtectedRoute>
               <Layout>
                 <CounselorNotifications />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/counselor/referrals"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <CounselorReferrals />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/counselor/referrals/:id/confirmation"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ReferralConfirmation />
               </Layout>
             </ProtectedRoute>
           }

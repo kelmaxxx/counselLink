@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   Calendar, Users, FileText, Bell, LogOut, User,
-  ClipboardList, BarChart3, Settings, BookOpen, AlertCircle, UserCheck, Shield, MessageCircle, FileSignature
+  ClipboardList, BarChart3, Settings, BookOpen, AlertCircle, UserCheck, Shield, MessageCircle, FileSignature, ArrowRightLeft
 } from "lucide-react";
 import { useMessages } from "../context/MessagesContext";
 
@@ -31,6 +31,7 @@ const idToPath = {
   // Counselor
   "manage-students": "/students",
   appointments: "/counselor/appointments",
+  referrals: "/counselor/referrals",
   "generate-reports": "/counselor/reports",
   
   // College Rep
@@ -66,6 +67,7 @@ const idToPath = {
           { id: "dashboard", label: "Dashboard", icon: BarChart3 },
           { id: "manage-students", label: "Manage Students Records", icon: Users },
           { id: "appointments", label: "Appointments", icon: Calendar },
+          { id: "referrals", label: "Referrals", icon: ArrowRightLeft },
           { id: "messages", label: "Messages", icon: MessageCircle },
           { id: "generate-reports", label: "Generate Reports", icon: FileText },
           { id: "profile", label: "My Profile", icon: User },
