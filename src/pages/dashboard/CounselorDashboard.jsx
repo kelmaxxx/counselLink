@@ -8,6 +8,16 @@ import { Users, Calendar, Clock3, FileText, ArrowRight, CheckCircle2, X, User2, 
 import { Link } from "react-router-dom";
 import ProfileViewModal from "../../components/ProfileViewModal";
 import ChatModal from "../../components/ChatModal";
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+
+const COLLEGE_COLORS = ["#7f1d1d", "#1d4ed8", "#15803d", "#c2410c", "#7e22ce", "#0e7490", "#9f1239"];
+const STATUS_COLORS = {
+  pending: "#f59e0b",
+  approved: "#16a34a",
+  rescheduled: "#0ea5e9",
+  rejected: "#dc2626",
+  completed: "#065f46",
+};
 
 export default function CounselorDashboard() {
   const { currentUser, users, lookupUser } = useAuth();
@@ -82,16 +92,17 @@ export default function CounselorDashboard() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
 
-  const maxStudents = Math.max(...topColleges.map(([_, count]) => count), 1);
-
-  // Define color palette for progress bars
-  const barColors = [
-    'bg-maroon-500',
-    'bg-blue-500',
-    'bg-green-500',
-    'bg-orange-500',
-    'bg-purple-500',
-  ];
+  const appointmentStatusBreakdown = useMemo(() => {
+    const counts = myAppointments.reduce((acc, a) => {
+      const key = a.status || "pending";
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(counts).map(([name, value]) => ({
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      value,
+    }));
+  }, [myAppointments]);
 
   // Handlers for appointment actions
   const handleAccept = async (id) => {
@@ -425,31 +436,68 @@ export default function CounselorDashboard() {
           </div>
         </div>
 
-        {/* Students by College - Full Width */}
-        <div className="bg-white rounded-xl shadow p-6 border border-gray-200">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">Students by College</h3>
-              <p className="text-sm text-gray-600">Distribution of your caseload</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {topColleges.map(([college, count], index) => (
-              <div key={college}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-gray-700">{college}</span>
-                  <span className="text-sm text-gray-600">{count} students</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className={`${barColors[index % barColors.length]} h-2 rounded-full`} style={{ width: `${(count / maxStudents) * 100}%` }}></div>
-                </div>
+        {/* Charts - Two pies side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl shadow p-6 border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Students by College</h3>
+            <p className="text-sm text-gray-600 mb-3">Distribution of your caseload</p>
+            {topColleges.filter(([, c]) => c > 0).length === 0 ? (
+              <p className="text-sm text-gray-500">No students yet.</p>
+            ) : (
+              <div style={{ width: "100%", height: 280 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={topColleges.filter(([, c]) => c > 0).map(([name, value]) => ({ name, value }))}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={90}
+                    >
+                      {topColleges.filter(([, c]) => c > 0).map((_, i) => (
+                        <Cell key={i} fill={COLLEGE_COLORS[i % COLLEGE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-            ))}
+            )}
+            <p className="text-sm text-gray-700 mt-2">
+              Total Students: <span className="font-bold text-gray-900">{totalStudents}</span>
+            </p>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-gray-200">
-            <p className="text-sm text-gray-700">Total Students: <span className="font-bold text-gray-900">{totalStudents}</span></p>
+          <div className="bg-white rounded-xl shadow p-6 border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Appointment Status Breakdown</h3>
+            <p className="text-sm text-gray-600 mb-3">Your appointments grouped by current status</p>
+            {appointmentStatusBreakdown.length === 0 ? (
+              <p className="text-sm text-gray-500">No appointments yet.</p>
+            ) : (
+              <div style={{ width: "100%", height: 280 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={appointmentStatusBreakdown}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={90}
+                      label={(entry) => `${entry.name}: ${entry.value}`}
+                    >
+                      {appointmentStatusBreakdown.map((entry) => (
+                        <Cell key={entry.name} fill={STATUS_COLORS[entry.name.toLowerCase()] || "#94a3b8"} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         </div>
 
