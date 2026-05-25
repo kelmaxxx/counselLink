@@ -21,7 +21,17 @@ A student counseling management system for MSU (Mindanao State University). Caps
 - **Auth** — JWT bearer tokens, bcrypt password hashing
 - **Email** — Nodemailer over SMTP (Gmail app password)
 
-Frontend talks to backend at `http://localhost:5000/api/*`. The frontend can override this via `VITE_API_BASE` in a root `.env`.
+Frontend talks to backend at `http://localhost:5000/api/*`. The frontend can override this via `VITE_API_BASE` in `frontend/.env`.
+
+The repo is split into two sibling folders:
+
+```
+counselLink/
+├── frontend/   # React + Vite app  (npm run dev → http://localhost:5173)
+└── backend/    # Express + MySQL API (npm run dev → http://localhost:5000)
+```
+
+Each folder has its own `package.json` and `node_modules`.
 
 ## Prerequisites
 
@@ -32,9 +42,9 @@ Frontend talks to backend at `http://localhost:5000/api/*`. The frontend can ove
 ## Setup
 
 ```powershell
-# 1. Install dependencies
-npm install
-cd backend ; npm install ; cd ..
+# 1. Install dependencies (each folder has its own package.json)
+cd frontend ; npm install ; cd ..
+cd backend  ; npm install ; cd ..
 
 # 2. Configure backend env
 copy backend\.env.example backend\.env
@@ -57,9 +67,9 @@ git fetch
 git checkout final-sprint-2026-05
 git pull
 
-# 2. Reinstall dependencies — root (frontend) AND backend each have their own package.json
-npm install
-cd backend ; npm install ; cd ..
+# 2. Reinstall dependencies — frontend AND backend each have their own package.json
+cd frontend ; npm install ; cd ..
+cd backend  ; npm install ; cd ..
 
 # 3. Apply any new database migrations
 # Check backend\migrations\ for files newer than your last pull and run each one.
@@ -71,8 +81,8 @@ mysql -u root -p counselink < backend\migrations\006_password_resets.sql
 # your .env -> add it (especially EMAIL_HOST/PORT/USER/PASS/FROM for password reset).
 
 # 5. Start both servers
-cd backend ; npm run dev    # terminal 1 (backend on :5000)
-npm run dev                 # terminal 2 in repo root (frontend on :5173)
+cd backend  ; npm run dev   # terminal 1 (backend on :5000)
+cd frontend ; npm run dev   # terminal 2 (frontend on :5173)
 ```
 
 If you still see "module not found" or "Unknown column" errors after these steps, paste the full error to the team chat before assuming the code is broken.
@@ -87,6 +97,7 @@ cd backend
 npm run dev          # starts on http://localhost:5000
 
 # Terminal 2 — frontend
+cd frontend
 npm run dev          # starts on http://localhost:5173
 ```
 
@@ -131,37 +142,42 @@ Students register through the signup form (with COR upload) and must be approved
 ## Project Structure
 
 ```
-counselLink-main/
-├── backend/
+counselLink/
+├── backend/                # Express + MySQL API (port 5000)
 │   ├── config/             # DB connection
 │   ├── controllers/        # Route handlers (auth, admin, appointments, …)
 │   ├── middleware/         # Auth middleware, etc.
 │   ├── routes/             # Express routers
 │   ├── services/           # email.service.js
 │   ├── uploads/            # Uploaded COR files (gitignored)
+│   ├── migrations/         # Incremental SQL migrations
 │   ├── schema.sql          # DB schema
 │   ├── seed.sql            # Seeded staff accounts
 │   ├── server.js           # Entry point
+│   ├── package.json
 │   └── .env.example
-├── public/                 # Static assets
-├── src/
-│   ├── components/
-│   ├── context/            # AuthContext, AppointmentsContext, …
-│   ├── data/
-│   ├── hooks/
-│   ├── pages/
-│   │   ├── admin/          # Admin pages
-│   │   ├── counselor/      # Counselor pages
-│   │   ├── dashboard/      # Per-role dashboards
-│   │   ├── rep/            # College rep pages
-│   │   └── student/        # Student pages
-│   ├── utils/
-│   ├── App.jsx
-│   ├── main.jsx
-│   └── index.css
-├── package.json
-├── vite.config.js
-└── tailwind.config.js
+├── frontend/               # React + Vite app (port 5173)
+│   ├── public/             # Static assets
+│   ├── src/
+│   │   ├── components/
+│   │   ├── context/        # AuthContext, AppointmentsContext, …
+│   │   ├── data/
+│   │   ├── pages/
+│   │   │   ├── admin/      # Admin pages
+│   │   │   ├── counselor/  # Counselor pages
+│   │   │   ├── dashboard/  # Per-role dashboards
+│   │   │   ├── rep/        # College rep pages
+│   │   │   └── student/    # Student pages
+│   │   ├── utils/
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   └── index.css
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   └── tailwind.config.js
+├── README.md
+└── PROGRESS.md
 ```
 
 ## API Routes
@@ -183,7 +199,7 @@ All under `/api`.
 
 ## Available Scripts
 
-Root (frontend):
+`frontend/`:
 - `npm run dev` — Start Vite dev server
 - `npm run build` — Production build
 - `npm run preview` — Preview production build
@@ -199,7 +215,7 @@ Root (frontend):
 
 **Login returns "Invalid credentials"** — verify the seeded users exist (`SELECT email, role FROM users;` in the `counselink` DB). If the seed was run before the latest hash update, re-run `mysql -u root -p < backend\seed.sql` after `TRUNCATE TABLE users;`.
 
-**Port already in use** — change `PORT` in `backend\.env` for the backend, or set `VITE_PORT` in a root `.env` for Vite.
+**Port already in use** — change `PORT` in `backend\.env` for the backend, or set `VITE_PORT` in `frontend\.env` for Vite.
 
 **MySQL access denied** — confirm `DB_USER` and `DB_PASSWORD` in `backend\.env` match your local MySQL setup.
 
